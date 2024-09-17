@@ -28,17 +28,17 @@ done;
 
 #
 read vargpumkr
-if [ -z $vargpumkr ] || [ -z $vga ]; then
+if [ -z $vargpumkr ]; then
 echo "No manufacturer entered, displaying all IOMMU groups :" && wait 2 && iommuscript
 else
-echo $(iommuscript | grep -i $vargpumkr)
+iommuscript | grep -i $vargpumkr
 fi
 echo "Please enter the IOMMU group which you would like to passthrough:"
 read -p "IOMMU GROUP "  vargroup
-vargroupids=iommuscript | grep "IOMMU Group $vargroup" | grep -o "[[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]]"
-
+vargroupids=$(iommuscript | grep "IOMMU Group $vargroup" | grep -o "\[[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]]")
+echo "$vargroupids"
 #end config wip
 #write pci.ids to $confvfio
-#dracut -f 
+#dracut -f
 #sed -i 's/CMD_LINUX_DEFAULT=/""vfio-pci.ids=[ids]/g' /etc/default/grub
 #update-grub
