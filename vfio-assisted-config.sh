@@ -16,10 +16,10 @@ done;
 ##
 }
 
-#detecting vfio use on VGA and skipping configuration
-varvheckvfio=$(lspci -k | grep vfio); ! [[ -z varvheckvfio ]] && echo "Found vfio driver in use, skipping configuration"
+#detecting vfio use on VGA and skipping configuration wip
+#varvheckvfio=$(lspci -k | grep vfio); ! [[ -z varvheckvfio ]] && echo "Found vfio driver in use, skipping configuration"
 
-#gpu autodetection
+#gpu autodetection wip
 #function awkprint {
 #awk -F ']' '{print$1}' | awk -F '[' '{print$2}'
 #}
@@ -31,12 +31,14 @@ read vargpumkr
 if [ -z $vargpumkr ] || [ -z $vga ]; then
 echo "No manufacturer entered, displaying all IOMMU groups :" && wait 2 && iommuscript
 else
-echo $(iommuscript | grep $vargpumkr)
+echo $(iommuscript | grep -i $vargpumkr)
 fi
 echo "Please enter the IOMMU group which you would like to passthrough:"
-read vargroup
-iommuscript | grep "IOMMU Group $vargroup"
-write pci.ids to $confvfio
-dracut -f 
-sed -i 's/CMD_LINUX_DEFAULT=/""vfio-pci.ids=[ids]/g' /etc/default/grub
-update-grub
+read -p "IOMMU GROUP "  vargroup
+vargroupids=iommuscript | grep "IOMMU Group $vargroup" | grep -o "[[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]]"
+
+#end config wip
+#write pci.ids to $confvfio
+#dracut -f 
+#sed -i 's/CMD_LINUX_DEFAULT=/""vfio-pci.ids=[ids]/g' /etc/default/grub
+#update-grub
