@@ -67,13 +67,14 @@ read -p "Continue with these settings? [y/n]:" vardoconfig
 [[ -z $vardoconfig || "n" == $vardoconfig ]] && echo "exiting script" && exit
 #>/
 #writting to /etc/default/grub
-varwriteids=$(echo ${varids[*]} | sed "s/ /,/g")
-vargrubvfio=$(cat /etc/default/grub | grep -o "$gvfio")
+varwriteids=$(echo ${arids[*]} | sed "s/ /,/g")
+vargrubvfio=$(cat /etc/default/grub | grep -o "$vargvfio")
 if [ -z "$vargrubvfio" ] ; then
     echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root access)"
     sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
     echo "Running update-grub"
     update-grub
 else
-    echo "Found preexisting pci.ids config in /etc/default/grub with ids : $vargrubvfio"
+    agvfio=(); for i in $vargrubvfio; do count=$((count +1)); agvfio+=($i);done
+    [[ "${arids[*]}" == "${agvfio[*]}" ]] && echo "Configuration is already present with desired pci.ids" || echo "Found discrepency between script pci.ids and grub pci.ids: Grub=$vargrubvfio; Script=${agvfio[*]}"
 fi
