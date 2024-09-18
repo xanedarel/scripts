@@ -17,7 +17,8 @@ done;
 }
 
 #detecting vfio use on VGA and skipping configuration wip
-#varvheckvfio=$(lspci -k | grep vfio); ! [[ -z varvheckvfio ]] && echo "Found vfio driver in use, skipping configuration"
+#varvheckvfio=$(lspci -k | grep vfio); ! [[ -z varvheckvfio ]] && echo "Found vfio driver in use, skip configuration? [y/n]"
+#read varskip
 
 #gpu autodetection wip
 #function awkprint {
@@ -37,18 +38,15 @@ echo "Please enter the IOMMU group which you would like to passthrough:"
 read -p "IOMMU GROUP "  vargroup
 vargroupids=$(iommuscript | grep "IOMMU Group $vargroup" | grep -o "[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]")
 
+#creating array of pci ids
 varids=()
 for i in $vargroupids; do
 count=$((count + 1))
 varids+=($i); done
-
-echo ${varids[*]}
-#end config wip
-#displaying pci.ids
-#echo "Found the following PCI IDS="
-#for ((i=1; i<=$count; i++)); do
-#eval echo "PCI ID $i: $varid$i"; done
-#echo $varid1
-#echo $varid2
-#sed -i 's/CMD_LINUX_DEFAULT=/""vfio-pci.ids=[ids]/g' /etc/default/grub
-#update-grub
+echo "PCI IDS being passedthrough: ${varids[*]}"
+#setting that array to be writable to /etc/default/grub
+varwriteids=$(echo ${varids[*]} | sed "s/ /,/g")
+#Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root access, todo: ability to display values and explain how to manually set them without requiring priviledges)
+sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
+echo "#Running update-grub"
+sudo update-grub
