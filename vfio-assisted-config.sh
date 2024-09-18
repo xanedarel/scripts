@@ -49,4 +49,4 @@ varwriteids=$(echo ${varids[*]} | sed "s/ /,/g")
 #Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root access, todo: ability to display values and explain how to manually set them without requiring priviledges)
 sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
 echo "#Running update-grub"
-sudo update-grub
+update-grub
