@@ -11,13 +11,11 @@ echo "Always read a script you downloaded from the internet."
 dirdracut=/etc/dracut.conf.d; ! [[ -d "$dirdracut" ]] && echo "Script obsolete review dracut.conf.d" && exit || echo "Dracut configuration folder found;"
 confvfio=$(ls $dirdracut | grep vfio);
 if [ -z $confvfio ]; then
-echo "No prior vfio configuration found, setting up $dirdracut/20-vfio.conf (this requires running the script as root)"
-touch $dirdracut/20-vfio.conf
-echo "Adding the following line to $dirdracut/20-vfio.conf"
-echo "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" | tee $dirdracut/20-vfio.conf
-dracut -f
+    echo "No prior vfio configuration found, setting up $dirdracut/20-vfio.conf (this requires running the script as root)"
+    touch $dirdracut/20-vfio.conf; echo "Adding the following line to $dirdracut/20-vfio.conf"
+    echo "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" | tee $dirdracut/20-vfio.conf; dracut -f;
 else
-echo "existing vfio configuration found $confvfio"
+    echo "existing vfio configuration found $confvfio"
 fi
 
 ##setting up the iommu script function
@@ -46,9 +44,9 @@ awk -F ']' '{print$1}' | awk -F '[' '{print$2}'
 ##get pci.ids values from the IOMMU group of target gpu pci device
 read vargpumkr
 if [ -z $vargpumkr ]; then
-echo "No manufacturer entered, displaying all IOMMU groups :" && wait 2; iommuscript
+    echo "No manufacturer entered, displaying all IOMMU groups :" && wait 2; iommuscript
 else
-iommuscript | grep -i $vargpumkr
+    iommuscript | grep -i $vargpumkr
 fi
 echo "Please enter the IOMMU group which you would like to passthrough:"
 read -p "IOMMU GROUP "  vargroup
@@ -58,8 +56,9 @@ vargroupids=$(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$gvfio")
 ##creating array of pci ids
 varids=()
 for i in $vargroupids; do
-count=$((count + 1))
-varids+=($i); done
+    count=$((count + 1))
+    varids+=($i)
+done
 #check for user agreement
 echo "PCI IDS configuration: ${varids[*]}."
 read -p "Continue with these settings? [y/n]:" vardoconfig
@@ -72,10 +71,10 @@ read -p "Continue with these settings? [y/n]:" vardoconfig
 varwriteids=$(echo ${varids[*]} | sed "s/ /,/g")
 vargrubvfio=$(cat /etc/default/grub | grep -o "$gvfio")
 if [ -z "$vargrubvfio" ] ; then
-echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root access)"
-sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
-echo "Running update-grub"
-update-grub
+    echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root access)"
+    sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
+    echo "Running update-grub"
+    update-grub
 else
-echo "Found preexisting pci.ids config in /etc/default/grub with ids : $vargrubvfio"
+    echo "Found preexisting pci.ids config in /etc/default/grub with ids : $vargrubvfio"
 fi
