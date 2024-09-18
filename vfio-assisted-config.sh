@@ -49,7 +49,7 @@ else
     iommuscript | grep -i $vargpumkr
 fi
 echo "Please enter the IOMMU group which you would like to passthrough:"
-read -p "IOMMU GROUP "  vargroup
+read -p "IOMMU GROUP " vargroup
 vargvfio="[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]"
 vargroupids=$(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$gvfio")
 
