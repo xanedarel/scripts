@@ -49,18 +49,17 @@ else
     iommuscript | grep -i $vargpumkr
 fi
 echo "Please enter the IOMMU group which you would like to passthrough:"
-read -p "IOMMU GROUP " vargroup
+read -p "IOMMU GROUP "  vargroup
 vargvfio="[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]"
-vargroupids=$(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$gvfio")
+vargroupids=$(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$vargvfio")
 
 ##creating array of pci ids
-varids=()
-for i in $vargroupids; do
-    count=$((count + 1))
-    varids+=($i)
-done
+arids=()
+for i in $vargroupids; do count=$((count + 1)); arids+=($i); done
+
 #check for user agreement
-echo "PCI IDS configuration: ${varids[*]}."
+
+echo "PCI IDS configuration: ${arids[*]}."
 read -p "Continue with these settings? [y/n]:" vardoconfig
 #>\
 # This is ugly, don't like it... But don't know how to do it better (yet)
