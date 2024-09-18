@@ -52,7 +52,8 @@ iommuscript | grep -i $vargpumkr
 fi
 echo "Please enter the IOMMU group which you would like to passthrough:"
 read -p "IOMMU GROUP "  vargroup
-vargroupids=$(iommuscript | grep "IOMMU Group $vargroup" | grep -o "[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]")
+vargvfio="[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]"
+vargroupids=$(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$gvfio")
 
 ##creating array of pci ids
 varids=()
@@ -69,7 +70,12 @@ read -p "Continue with these settings? [y/n]:" vardoconfig
 #>/
 #writting to /etc/default/grub
 varwriteids=$(echo ${varids[*]} | sed "s/ /,/g")
+vargrubvfio=$(cat /etc/default/grub | grep -o "$gvfio")
+if [ -z "$vargrubvfio" ] ; then
 echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root access)"
 sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
-echo "#Running update-grub"
+echo "Running update-grub"
 update-grub
+else
+echo "Found preexisting pci.ids config in /etc/default/grub with ids : $vargrubvfio"
+fi
