@@ -21,8 +21,8 @@ echo "existing vfio configuration found $confvfio"
 fi
 
 ##setting up the iommu script function
-function iommuscript {
 # iommu script from https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
+function iommuscript {
 # change the 999 if needed
 shopt -s nullglob
 for d in /sys/kernel/iommu_groups/{0..999}/devices/*; do
@@ -37,9 +37,9 @@ done;
 #read varskip
 
 ##gpu autodetection wip
-#function awkprint {
-#awk -F ']' '{print$1}' | awk -F '[' '{print$2}'
-#}
+function awkprint {
+awk -F ']' '{print$1}' | awk -F '[' '{print$2}'
+}
 #vga=$(lspci | grep VGA | awkprint)
 ! [[ -z $vga ]] && echo -e "The following GPUs have been found:\n$vga" || echo "Autodetection failed : Please enter your GPU manufacturer [Press enter for unknown]"
 
@@ -62,8 +62,11 @@ varids+=($i); done
 #check for user agreement
 echo "PCI IDS configuration: ${varids[*]}."
 read -p "Continue with these settings? [y/n]:" vardoconfig
+#>\
+# This is ugly, don't like it... But don't know how to do it better (yet)
 [[ -z $vardoconfig ]] && echo "no input detected"
 [[ -z $vardoconfig || "n" == $vardoconfig ]] && echo "exiting script" && exit
+#>/
 #writting to /etc/default/grub
 varwriteids=$(echo ${varids[*]} | sed "s/ /,/g")
 echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root access)"
