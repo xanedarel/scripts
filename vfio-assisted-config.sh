@@ -2,20 +2,21 @@
 
 ## This script aims to automate the configuration needed to use the vfio drivers on specific pci devices / iommu group.
 ## The sources for third party code have been explicited
-## Some actions require elevated priviledges, like setting up $dirdracut/20-vfio.conf, regenerating the initramfs, configuring the vfio-pci.ids on GRUB, and updating the grub.
+## Some actions require elevated privileges, like setting up $dirdracut/20-vfio.conf, regenerating the initramfs, configuring the vfio-pci.ids on GRUB, and updating the grub.
 ## The script is heavily influenced by the use of NVIDIA GPUs, please help make it more manufacturer agnostic.
 
-echo "Always read a script you downloaded from the internet."
+echo "Always read a script you download from the internet."
 
 ##checking dracut configuration folders and the status of a vfio.conf file
 dirdracut=/etc/dracut.conf.d; ! [[ -d "$dirdracut" ]] && echo "Script obsolete review dracut.conf.d" && exit || echo "Dracut configuration folder found;"
 confvfio=$(ls $dirdracut | grep vfio);
-if [ -z $confvfio ]; then
+if [ -z "$confvfio" ]; then
     echo "No prior vfio configuration found, setting up $dirdracut/20-vfio.conf (this requires running the script as root)"
     touch $dirdracut/20-vfio.conf; echo "Adding the following line to $dirdracut/20-vfio.conf"
-    echo "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" | tee $dirdracut/20-vfio.conf; dracut -f;
+    echo "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" | tee $dirdracut/20-vfio.conf
+    read -p "Regenerate initramfs now? [y/n]:" vargen; [[ "y" == "$vargen" ]] && dracut -f;
 else
-    echo "existing vfio configuration found $confvfio"
+    echo "Existing vfio configuration found $confvfio"
 fi
 
 ##setting up the iommu script function
@@ -30,51 +31,44 @@ for d in /sys/kernel/iommu_groups/{0..999}/devices/*; do
 done;
 }
 
-##detecting vfio use on VGA and skipping configuration wip
-#varvheckvfio=$(lspci -k | grep vfio); ! [[ -z varvheckvfio ]] && echo "Found vfio driver in use, skip configuration? [y/n]"
-#read varskip
-
-##gpu autodetection wip
-function awkprint {
-awk -F ']' '{print$1}' | awk -F '[' '{print$2}'
-}
-#vga=$(lspci | grep VGA | awkprint)
-! [[ -z $vga ]] && echo -e "The following GPUs have been found:\n$vga" || echo "Autodetection failed : Please enter your GPU manufacturer [Press enter for unknown]"
 
 ##get pci.ids values from the IOMMU group of target gpu pci device
+echo "Please enter your GPU manufacturer [Press enter for unknown]"
 read vargpumkr
-if [ -z $vargpumkr ]; then
+if [ -z "$vargpumkr" ]; then
     echo "No manufacturer entered, displaying all IOMMU groups :" && wait 2; iommuscript
 else
-    iommuscript | grep -i $vargpumkr
+    iommuscript | grep -i "$vargpumkr"
 fi
 echo "Please enter the IOMMU group which you would like to passthrough:"
 read -p "IOMMU GROUP "  vargroup
-vargvfio="[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]"
-vargroupids=$(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$vargvfio")
+vargrepids="[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]"
+vargroupids=$(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$vargrepids")
 
 ##creating array of pci ids
 arids=()
 for i in $vargroupids; do count=$((count + 1)); arids+=($i); done
 
+##write changes
 #check for user agreement
 
-echo "PCI IDS configuration: ${arids[*]}."
+echo "PCI IDs configuration: ${arids[*]}."
 read -p "Continue with these settings? [y/n]:" vardoconfig
-#>\
-# This is ugly, don't like it... But don't know how to do it better (yet)
-[[ -z $vardoconfig ]] && echo "no input detected"
 [[ -z $vardoconfig || "n" == $vardoconfig ]] && echo "exiting script" && exit
-#>/
-#writting to /etc/default/grub
+#modify the array to fit grub's syntax
 varwriteids=$(echo ${arids[*]} | sed "s/ /,/g")
-vargrubvfio=$(cat /etc/default/grub | grep -o "$vargvfio")
+#check wether /etc/default/grub already has pci.ids entries
+vargrubvfio=$(cat /etc/default/grub | grep -o "$vargrepids")
 if [ -z "$vargrubvfio" ] ; then
-    echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root access)"
+    echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root privileges)"
     sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
     echo "Running update-grub"
     update-grub
 else
     agvfio=(); for i in $vargrubvfio; do count=$((count +1)); agvfio+=($i);done
-    [[ "${arids[*]}" == "${agvfio[*]}" ]] && echo "Configuration is already present with desired pci.ids" || echo "Found discrepency between script pci.ids and grub pci.ids: Grub=$vargrubvfio; Script=${agvfio[*]}"
+    #comparing arrays might make the condition expression return a false negative (todo)
+    if [[ "${arids[*]}" == "${agvfio[*]}" ]]; then echo "Configuration is already present with desired pci.ids"
+    else
+    echo "Found discrepency between script pci.ids and grub pci.ids: Grub=$vargrubvfio; Script=${agvfio[*]}"
+    fi
 fi
