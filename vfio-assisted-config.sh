@@ -1,9 +1,16 @@
 #!/bin/bash
 
 #checking dracut configuration folders and the status of a vfio.conf file
-dirdracut=/etc/dracut.conf.d/; ! [[ -d "$dirdracut" ]] && echo "script obsolete review dracut.conf.d" && exit || echo "dracut configuration folder found"
-confvfio=$(ls $dirdracut | grep vfio); [[ -z $confvfio ]] && echo "no prior vfio configuration found, setting up $dirdracut/20-vfio.conf" || echo "existing vfio configuration found $confvfio"
-
+dirdracut=/etc/dracut.conf.d; ! [[ -d "$dirdracut" ]] && echo "Script obsolete review dracut.conf.d" && exit || echo "Dracut configuration folder found;"
+confvfio=$(ls $dirdracut | grep vfio);
+if [ -z $confvfio ]; then
+echo "No prior vfio configuration found, setting up $dirdracut/20-vfio.conf (this requires running the script as root)"
+touch $dirdracut/20-vfio.conf
+echo "Adding the following line to $dirdracut/20-vfio.conf"
+echo "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" | tee $dirdracut/20-vfio.conf
+else
+echo "existing vfio configuration found $confvfio"
+fi
 function iommuscript {
 ## iommu script from https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
 # change the 999 if needed
@@ -43,10 +50,14 @@ varids=()
 for i in $vargroupids; do
 count=$((count + 1))
 varids+=($i); done
-echo "PCI IDS being passedthrough: ${varids[*]}"
-#setting that array to be writable to /etc/default/grub
+#check for user agreement
+echo "PCI IDS configuration: ${varids[*]}."
+read -p "Continue with these settings? [y/n]:" vardoconfig
+[[ -z $vardoconfig ]] && echo "no input detected"
+[[ -z $vardoconfig || "n" == $vardoconfig ]] && echo "exiting script" && exit
+#setting the array to be writable to /etc/default/grub
 varwriteids=$(echo ${varids[*]} | sed "s/ /,/g")
-#Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root access, todo: ability to display values and explain how to manually set them without requiring priviledges)
+#Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root access)
 sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
 echo "#Running update-grub"
 update-grub
