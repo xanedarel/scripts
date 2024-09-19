@@ -65,9 +65,14 @@ if [ -z "$vargrubvfio" ] ; then
     echo "Running update-grub"
     update-grub
 else
-    agvfio=(); for i in $vargrubvfio; do count=$((count +1)); agvfio+=($i);done
+else
+    agvfio=(); for i in $vargrubvfio; do countagvfio=$((count +1)); agvfio+=($i);done
     #comparing arrays might make the condition expression return a false negative (todo)
     if [[ "${arids[*]}" == "${agvfio[*]}" ]]; then echo "Configuration is already present with desired pci.ids"
+
+#fixing the array issue wip
+#for ((i=0; i<=$countarids; i++)); do ! [[ -z $(cat /etc/default/grub | grep ${arids[$i]}) ]] && eval var$i=found; done
+
     else
     echo "Found discrepency between script pci.ids and grub pci.ids: Grub=$vargrubvfio; Script=${agvfio[*]}"
     fi
