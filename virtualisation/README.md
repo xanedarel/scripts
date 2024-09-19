@@ -10,9 +10,14 @@ create symlinks for libvirt deamons in the services directory
 # ln -s /etc/sv/virtlogd /var/service
 # ln -s /etc/sv/libvirtd /var/service
 ```
+You may also need to change your $user groups :
+```
+# usermod -aG input <$user>
+# usermod -aG libvirt <$user> 
+```
 either reboot the system or run `# sv up <deamon>` for every deamon (ie. virtlockd)
 
-setting up vfio gpu drivers is the next step before creating the vm
+set up vfio gpu drivers is the next step before creating the vm:
 
 ## setting up vfio pci ids with the script in ./
 ### Use the script vfio-assisted-config.sh
