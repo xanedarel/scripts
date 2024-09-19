@@ -16,7 +16,9 @@ setting up vfio gpu drivers is the next step before creating the vm
 
 ## setting up vfio pci ids with the script in ./
 ### Use the script vfio-assisted-config.sh
+Done.
 
+or:
 ## manual steps
 run `./scripts/iommu.sh` on the host system to display devices with IOMMU groups and their respective pci.ids
 ```
