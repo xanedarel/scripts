@@ -18,6 +18,7 @@ You may also need to change your $user groups :
 # usermod -aG libvirt <$user> 
 ```
 > Replace <$user> with your user account, ex: usermod -aG input elise
+
 set up vfio gpu drivers is the next step before creating the vm:
 
 ## setting up vfio pci ids with the script in ./
