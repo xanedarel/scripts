@@ -15,7 +15,7 @@ either reboot the system or run `# sv up <deamon>` for every deamon (ie. virtloc
 setting up vfio gpu drivers is the next step before creating the vm
 
 ## setting up vfio pci ids
-Use the script vfio-auto-config.sh or use the manual steps:
+Use the script vfio-assisted-config.sh or use the manual steps:
 
 #Manual steps
 run `./scripts/iommu.sh` on the host system to display devices with IOMMU groups and their respective pci.ids
