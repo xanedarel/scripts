@@ -76,7 +76,5 @@ idcheck=()
         do [[ "${idcheck[$i]}" == "found" ]] && echo "${agvfio[$i]} was found in preexisting /etc/default/grub"
         [[ "${idcheck[$i]}" == "notfound" ]] && echo "Discrepency: ${agvfio[$i]} in /etc/default/grub. Expected: ${arids[$i]}"
         done
-    for ((i=0; i<$countarids; i++))
-        do [[ ${idcheck[$i]} == "notfound" ]] &&
 # store in an array the values in /etc/default/grub that do not match $varwriteids
 fi
