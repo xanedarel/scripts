@@ -69,7 +69,7 @@ else
     agvfio=(); for i in $vargrubvfio; do countagvfio=$((countagvfio +1)); agvfio+=($i);done
 idcheck=()
     for ((i=0; i<$countarids; i++))
-        do declare grubids=$(cat /etc/default/grub | grep -o "${arids[$i]}" )
+        do grubids=$(cat /etc/default/grub | grep -o "${arids[$i]}" )
         ! [[ -z "$grubids" ]] && idcheck+=(found) || idcheck+=(notfound)
         done
     for ((i=0; i<$countarids; i++))
