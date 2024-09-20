@@ -67,13 +67,16 @@ if [ -z "$vargrubvfio" ] ; then
 else
 #todo : redo
     agvfio=(); for i in $vargrubvfio; do countagvfio=$((countagvfio +1)); agvfio+=($i);done
-idcheck=()
 goodids=()
     for ((i=0; i<$countarids; i++))
-        do grubids=$(cat /etc/default/grub | grep -o "${arids[$i]}" ); goodids+=($grubids);
-        ! [[ -z "${goodids[$i]}" ]] && echo "${agvfio[$i]} was found in preexisting /etc/default/grub"
-        [[ -z "${goodids[$i]}" ]] && echo "Discrepency: ${agvfio[$i]} in /etc/default/grub. Expected: ${arids[$i]}"
+        do grubids=$(cat /etc/default/grub | grep -o "${arids[$i]}" ); goodids+=($grubids)
         done
-
+    for ((i=0; i<$countarids; i++))
+        do [[ -z $("${arids[$i]}" | grep "${goodids[*]}") ]] && echo "${agvfio[$i]} was found in /etc/default/grub."
+        [[ -z "${goodids[$i]}" ]] && echo "Discrepency: ${agvfio[$i]} not found in /etc/default/grub."
+        done
+        echo ${goodids[*]}
+#    for ((i=0; i<=$vargrubvfio; i++))
+#        do ${agvfio[$i]} | grep -v
 # store in an array the values in /etc/default/grub that do not match $varwriteids
 fi
