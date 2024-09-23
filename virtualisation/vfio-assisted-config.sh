@@ -5,7 +5,7 @@
 ## Some actions require elevated privileges, like setting up $dirdracut/20-vfio.conf, regenerating the initramfs, configuring the vfio-pci.ids on GRUB, and updating the grub.
 ## The script is heavily influenced by the use of NVIDIA GPUs, please help make it more manufacturer agnostic.
 
-echo "Always read a script you download from the internet."
+#       Always read a script you download from the internet.        #
 
 ##checking dracut configuration folders and the status of a vfio.conf file
 dirdracut=/etc/dracut.conf.d; ! [[ -d "$dirdracut" ]] && echo "Script obsolete review dracut.conf.d" && exit || echo "Dracut configuration folder found;"
@@ -31,52 +31,47 @@ for d in /sys/kernel/iommu_groups/{0..999}/devices/*; do
 done;
 }
 
-
 ##get pci.ids values from the IOMMU group of target gpu pci device
 echo "Please enter your GPU manufacturer [Press enter for unknown]"
 read vargpumkr
 if [ -z "$vargpumkr" ]; then
-    echo "No manufacturer entered, displaying all IOMMU groups :" && wait 2; iommuscript
+    echo "No manufacturer entered, displaying all IOMMU groups:" && wait 2; iommuscript
 else
-    iommuscript | grep -i "$vargpumkr"
+    displaygroups=$(iommuscript | grep -i "$vargpumkr")
+    [[ -n "$displaygroups" ]] && echo "$displaygroups" || echo -e "No match found, displaying all IOMMU groups:\n" || iommuscript
 fi
 echo "Please enter the IOMMU group which you would like to passthrough:"
 read -p "IOMMU GROUP "  vargroup
-grepids="[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]"
-vargroupids=$(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$grepids")
 
 ##creating array of pci ids
-arids=()
-for i in $vargroupids; do countarids=$((countarids + 1)); arids+=($i); done
+arids=(); grepids="[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]:[0-9A-Za-z][0-9A-Za-z][0-9A-Za-z][0-9A-Za-z]"; countarids=0
+for i in $(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$grepids"); do countarids=$((countarids + 1)); arids+=($i); done
 
 ##write changes
 #check for user agreement
 
 echo "PCI IDs configuration: ${arids[*]}."
 read -p "Continue with these settings? [y/n]:" vardoconfig
-[[ -z $vardoconfig || "n" == $vardoconfig ]] && echo "exiting script" && exit
+! [[ "y" == "$vardoconfig" ]] && echo "exiting script" && exit
 #modify the array to fit grub's syntax
 varwriteids=$(echo ${arids[*]} | sed "s/ /,/g")
-#check wether /etc/default/grub already has pci.ids entries
-vargrubvfio=$(cat /etc/default/grub | grep -o "$grepids")
+#check wether /etc/default/grub already has pci.ids entries (todo: make sure to read from the "GRUB_CMDLINE_LINUX_DEFAULT=" line)
+vargrubvfio=$(grep -o "$grepids" /etc/default/grub)
 if [ -z "$vargrubvfio" ] ; then
     echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root privileges)"
     sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
-    echo "Running update-grub"
-    update-grub
+    reap -p "Run update-grub now? [y/n]:" grubupd
+    [[ "y" == "$grubupd" ]] && update-grub
 else
-#todo : redo
+#status : draft
     agvfio=(); for i in $vargrubvfio; do countagvfio=$((countagvfio +1)); agvfio+=($i);done
-goodids=()
-    for ((i=0; i<$countarids; i++))
-        do grubids=$(cat /etc/default/grub | grep -o "${arids[$i]}" ); goodids+=($grubids)
-        done
-    for ((i=0; i<$countarids; i++))
-        do [[ -z $("${arids[$i]}" | grep "${goodids[*]}") ]] && echo "${agvfio[$i]} was found in /etc/default/grub."
-        [[ -z "${goodids[$i]}" ]] && echo "Discrepency: ${agvfio[$i]} not found in /etc/default/grub."
-        done
-        echo ${goodids[*]}
-#    for ((i=0; i<=$vargrubvfio; i++))
-#        do ${agvfio[$i]} | grep -v
-# store in an array the values in /etc/default/grub that do not match $varwriteids
+    written=()
+for ((i=0; i<=$countagvfio; i++)); do
+    [[ -n $(${arids[*]} | grep "${agvfio[$i]}") ]] && written+=(${agvfio[$i]})
+    done
+    n=0
+#for i in ${arids[*]}; do
+#    n=$((n + 1))
+#    remove from agvfio
+
 fi
