@@ -76,11 +76,14 @@ if [[ -f $(which grub 2>/dev/null) ]]; then
         read -p "Run update-grub now? [y/n]:" grubupd
         [[ "y" == "$grubupd" ]] && update-grub
 #gummiboot support WIP
-elif [ -f $(which gummiboot) ]; then
+elif [[ -f $(which gummiboot) ]]; then
     [[ -d /boot/loader/ ]] && loader=/boot/loader
     [[ -d /efi/loader/ ]] && loader=/boot/loader
     [[ -f $loader/loader.conf ]] && defaultboot=$(awk '{print $2}' $loader/loader.conf)
     cp $loader/entries/$defaultboot.conf $loader/entries/$defaultboot.back
+    [[ -z $(grep -i options $loader/entries/$defaultboot.conf) ]] && echo "options" >> $loader/entries/$defaultboot.conf
+    sed -i "/^options/ s/\$/ vfio-pci.ids=$varwriteids\"/" $loader/entries/$defaultboot.conf
+    echo $loader/entries$defaultboot.conf
 else
 #Comparing preexisting vfio-pci.ids WIP
         agvfio=(); for i in $vargrubvfio; do countagvfio=$((countagvfio +1)); agvfio+=($i);done
