@@ -74,17 +74,8 @@ if [[ -f $(which grub 2>/dev/null) ]]; then
         echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root privileges)"
         sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
         read -p "Run update-grub now? [y/n]:" grubupd
-        [[ "y" == "$grubupd" ]] && update-grub
-#gummiboot support WIP
-elif [[ -f $(which gummiboot) ]]; then
-    [[ -d /boot/loader/ ]] && loader=/boot/loader
-    [[ -d /efi/loader/ ]] && loader=/boot/loader
-    [[ -f $loader/loader.conf ]] && defaultboot=$(awk '{print $2}' $loader/loader.conf)
-    cp $loader/entries/$defaultboot.conf $loader/entries/$defaultboot.back
-    [[ -z $(grep -i options $loader/entries/$defaultboot.conf) ]] && echo "options" >> $loader/entries/$defaultboot.conf
-    sed -i "/^options/ s/\$/ vfio-pci.ids=$varwriteids\"/" $loader/entries/$defaultboot.conf
-    echo $loader/entries$defaultboot.conf
-else
+        [[ "$grubupd" =~ ^[yY]$ ]] && update-grub
+        else
 #Comparing preexisting vfio-pci.ids WIP
         agvfio=(); for i in $vargrubvfio; do countagvfio=$((countagvfio +1)); agvfio+=($i);done
         written=()
@@ -93,4 +84,18 @@ else
         done
         n=0
     fi
+#gummiboot support WIP
+elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
+    #determining what folder gummiboot uses
+    [[ -d /boot/loader/ ]] && loader=/boot/loader
+    [[ -d /efi/loader/ ]] && loader=/efi/loader
+    #getting the default .conf file
+    [[ -f $loader/loader.conf ]] && defaultboot=$(awk '{print $2}' $loader/loader.conf)
+    cp $loader/entries/$defaultboot.conf $loader/entries/$defaultboot.back
+    [[ -z $(grep -i options $loader/entries/$defaultboot.conf) ]] && echo "options" >> $loader/entries/$defaultboot.conf
+    if [ -z $(grep -i "[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}") ]; then
+    sed -i "/^options/ s/\$/ vfio-pci.ids=$varwriteids/" $loader/entries/$defaultboot.conf
+    else
+
+    echo "Modified $loader/entries/$defaultboot.conf"
 fi
