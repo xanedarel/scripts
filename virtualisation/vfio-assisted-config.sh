@@ -76,13 +76,19 @@ if [[ -f $(which grub 2>/dev/null) ]]; then
         read -p "Run update-grub now? [y/n]:" grubupd
         [[ "$grubupd" =~ ^[yY]$ ]] && update-grub
         else
-#Comparing preexisting vfio-pci.ids WIP
-        agvfio=(); for i in $vargrubvfio; do countagvfio=$((countagvfio +1)); agvfio+=($i);done
-        written=()
-        for ((i=0; i<=$countagvfio; i++)); do
-        [[ -n $(${arids[*]} | grep "${agvfio[$i]}") ]] && written+=(${agvfio[$i]})
+#Comparing preexisting vfio-pci.ids
+        agvfio=(); for i in $vargrubvfio; do countagvfio=$((countagvfio + 1)); agvfio+=($i);done
+        for ((i=0; i < "${#varwriteids[@]}"; i++)); do
+        # debug echo "i = $i"
+        if [[ ! " ${avfio[@]} " =~ "${varwriteids[$i]}" ]]; then
+                varwrite+=(${varwriteids[$i]})
+                unset varwriteids[$i]
+        fi
         done
-        n=0
+        #modify the grub wip
+        printf "Modifying line:$( grep -Fn 'GRUB_CMDLINE' /etc/default/grub | awk -F ':' '{print $1}') of /etc/default/grub : adding the following ids ${varwrite[@]}"
+        read -p "Confirm? [y/n]" vargrub
+        [[ "$vargrub" =~ ^[yY]$ ]] && sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/vfio-pci.ids=//g" /etc/default/grub
     fi
 #gummiboot support WIP
 elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
