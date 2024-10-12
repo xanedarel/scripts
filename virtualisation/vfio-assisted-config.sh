@@ -69,8 +69,13 @@ varwriteids=$(echo ${arids[*]} | sed "s/ /,/g")
 if [[ -f $(which grub 2>/dev/null) ]]; then
 	IDFILE=/etc/default/grub
 elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
-	IDFILE=/boot/loader
+	IDDIR=/boot/loader
+    CONFFILE=$IDDIR/loader.conf
+    IDFILE=$(awk '{print $2}' $CONFFILE)
 fi
+
+#if you have a different bootloader or different configuration, you can override the $IDFILE variable here by uncommenting the following line and including the URI to the file where your pci.ids are written
+#IDFILE=/path/to/file
 
 #> setting the pci.ids entries of $IDFILE
 avfio=$(grep -o "$vfioids" $IDFILE)
@@ -98,41 +103,60 @@ done
 #       arwrite need to be written
 
 ## Writing changes
-# we can start by running through the ids to be deleted in ardel, if none are present we will write at the end of the string
-if [[ ! -z "$ardel[@]" && ! -z  ]]; then
-    for ((i=0; i < "${#ardel[@]}"; i++)); do
-        sed -i 's/${ardel[$i]}//g'
-
-    if [ -z "$bootloadervfio" ] ; then
-        echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root privileges)"
-        sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
-        read -p "Run update-grub now? [y/n]:" grubupd
-        [[ "$grubupd" =~ ^[yY]$ ]] && update-grub
-        else
-#Comparing preexisting vfio-pci.ids
-        for ((i=0; i < "${#varwriteids[@]}"; i++)); do
-        # debug echo "i = $i"
-        if [[ ! " ${avfio[@]} " =~ "${varwriteids[$i]}" ]]; then
-                varwrite+=(${varwriteids[$i]})
-                unset varwriteids[$i]
-        fi
+#the $line variable is only set for cosmetic reasons
+line=$(grep -En 'GRUB_CMDLINE|options' $IDFILE)
+#asking for user input confirmation with detected changes
+printf "Modifying line:$($IDFILE | awk -F ':' '{print $1}') of $IDFILE : adding the following ids ${varwrite[@]}"; [[ -n ${ardel[@]} ]] && ", removing the following ids ${ardel[@]}"
+read -p "Confirm changes? [y/n]" varuserconf
+[[ ! "$vargrub" =~ ^[yY]$ ]] && exit
+# we can start by running through the ids to be deleted in ardel, if none are present we will write at the end of the string "vfio-pci.ids=" if present.
+for ((i=0; i < "${#arwrite[@]}"; i++)); do
+    if [[ -n ${ardel[@]} ]]; then
+        for ((target=0; target < "${#ardel[@]}"; target++)); do
+        sed -i 's/${ardel[$target]}/${arwrite[$i]}/g' $IDFILE
         done
-        #modify the grub wip
-        printf "Modifying line:$( grep -Fn 'GRUB_CMDLINE' /etc/default/grub | awk -F ':' '{print $1}') of /etc/default/grub : adding the following ids ${varwrite[@]}"
-        read -p "Confirm changes? [y/n]" vargrub
-        if [[ "$vargrub" =~ ^[yY]$ ]]; then
-#gummiboot support WIP
-elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
-    #determining what folder gummiboot uses
-    [[ -d /boot/loader/ ]] && loader=/boot/loader
-    [[ -d /efi/loader/ ]] && loader=/efi/loader
-    #getting the default .conf file
-    [[ -f $loader/loader.conf ]] && defaultboot=$(awk '{print $2}' $loader/loader.conf)
-    cp $loader/entries/$defaultboot.conf $loader/entries/$defaultboot.back
-    [[ -z $(grep -i options $loader/entries/$defaultboot.conf) ]] && echo "options" >> $loader/entries/$defaultboot.conf
-    if [ -z $(grep -i "[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}") ]; then
-    sed -i "/^options/ s/\$/ vfio-pci.ids=$varwriteids/" $loader/entries/$defaultboot.conf
     else
 
-    echo "Modified $loader/entries/$defaultboot.conf"
-fi
+#reaching here if ardel is empty wip
+    elif [[ -z ${ardel[@]} ]]; then
+        #if there is already ids in the $IDFILE and there is already a vfio-pci.ids= parameter
+        if [[ -n $(grep -o "$vfioids" $IDFILE) && -n $(grep -o "vfio-pci.ids=" $IDFILE) ]]; then
+            [[ ]]
+
+
+
+
+
+#     if [ -z "$bootloadervfio" ] ; then
+#         echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root privileges)"
+#         sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
+#         read -p "Run update-grub now? [y/n]:" grubupd
+#         [[ "$grubupd" =~ ^[yY]$ ]] && update-grub
+#         else
+# #Comparing preexisting vfio-pci.ids
+#         for ((i=0; i < "${#varwriteids[@]}"; i++)); do
+#         # debug echo "i = $i"
+#         if [[ ! " ${avfio[@]} " =~ "${varwriteids[$i]}" ]]; then
+#                 varwrite+=(${varwriteids[$i]})
+#                 unset varwriteids[$i]
+#         fi
+#         done
+#         #modify the grub wip
+#         printf "Modifying line:$( grep -Fn 'GRUB_CMDLINE' /etc/default/grub | awk -F ':' '{print $1}') of /etc/default/grub : adding the following ids ${varwrite[@]}"
+#         read -p "Confirm changes? [y/n]" vargrub
+#         if [[ "$vargrub" =~ ^[yY]$ ]]; then
+# #gummiboot support WIP
+# elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
+#     #determining what folder gummiboot uses
+#     [[ -d /boot/loader/ ]] && loader=/boot/loader
+#     [[ -d /efi/loader/ ]] && loader=/efi/loader
+#     #getting the default .conf file
+#     [[ -f $loader/loader.conf ]] && defaultboot=$(awk '{print $2}' $loader/loader.conf)
+#     cp $loader/entries/$defaultboot.conf $loader/entries/$defaultboot.back
+#     [[ -z $(grep -i options $loader/entries/$defaultboot.conf) ]] && echo "options" >> $loader/entries/$defaultboot.conf
+#     if [ -z $(grep -i "[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}") ]; then
+#     sed -i "/^options/ s/\$/ vfio-pci.ids=$varwriteids/" $loader/entries/$defaultboot.conf
+#     else
+#
+#     echo "Modified $loader/entries/$defaultboot.conf"
+# fi
