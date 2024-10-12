@@ -56,11 +56,8 @@ echo "Please enter the IOMMU group which you would like to passthrough:"
 read -p "IOMMU GROUP "  vargroup
 
 ##creating array of pci ids
-arids=(); grepids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"; countarids=0
-for i in $(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$grepids"); do countarids=$((countarids + 1)); arids+=($i); done
-
-##write changes
-#check for user agreement
+arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
+for i in $(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$vfioids"); arids+=($i); done
 
 echo "PCI IDs configuration: ${arids[*]}."
 read -p "Continue with these settings? [y/n]:" vardoconfig
@@ -68,16 +65,51 @@ read -p "Continue with these settings? [y/n]:" vardoconfig
 #modify the array to fit the kernel's command line syntax
 varwriteids=$(echo ${arids[*]} | sed "s/ /,/g")
 #check wether /etc/default/grub already has pci.ids entries (todo: make sure to read from the "GRUB_CMDLINE_LINUX_DEFAULT=" line)
+#check which bootloader may be installed
 if [[ -f $(which grub 2>/dev/null) ]]; then
-        vargrubvfio=$(grep -o "$grepids" /etc/default/grub)
-    if [ -z "$vargrubvfio" ] ; then
+	IDFILE=/etc/default/grub
+elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
+	IDFILE=/boot/loader
+fi
+
+#> setting the pci.ids entries of $IDFILE
+avfio=$(grep -o "$vfioids" $IDFILE)
+#> For no preexisting config jump to line : x
+
+#Comparing those ids with iommuscript's output
+#   ardel is an array with ids in the bootloader's config file which do not match the output of this script;
+# checking against avfio
+for ((i=0; i < "${#avfio[@]}"; i++)); do
+    if [[ ! " ${arids[@]} " =~ "${avfio[$i]}" ]];
+        then ardel+=(${avfio[$i]})
+#removing that id from avfio so that only ids matching with arids remain in it
+                unset avfio[$i]
+    fi
+done
+#running that comparison again this time checking whether any entry in arids is already present in the bootloader's config file, if it isn't, it needs to be written and is added to the array arwrite
+for ((i=0; i < "${#arids[@]}"; i++)); do
+    if [[ ! " ${avfio[@]} " =~ "${arids[$i]}" ]]
+        then arwrite+=(${arids[$i]})
+    fi
+done
+#ids in
+#       avfio need to remain in the config file
+#       ardel need to be deleted
+#       arwrite need to be written
+
+## Writing changes
+# we can start by running through the ids to be deleted in ardel, if none are present we will write at the end of the string
+if [[ ! -z "$ardel[@]" && ! -z  ]]; then
+    for ((i=0; i < "${#ardel[@]}"; i++)); do
+        sed -i 's/${ardel[$i]}//g'
+
+    if [ -z "$bootloadervfio" ] ; then
         echo "Appending the ids to /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT line (requires root privileges)"
         sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ vfio-pci.ids=$varwriteids\"/" /etc/default/grub
         read -p "Run update-grub now? [y/n]:" grubupd
         [[ "$grubupd" =~ ^[yY]$ ]] && update-grub
         else
 #Comparing preexisting vfio-pci.ids
-        agvfio=(); for i in $vargrubvfio; do countagvfio=$((countagvfio + 1)); agvfio+=($i);done
         for ((i=0; i < "${#varwriteids[@]}"; i++)); do
         # debug echo "i = $i"
         if [[ ! " ${avfio[@]} " =~ "${varwriteids[$i]}" ]]; then
@@ -87,9 +119,8 @@ if [[ -f $(which grub 2>/dev/null) ]]; then
         done
         #modify the grub wip
         printf "Modifying line:$( grep -Fn 'GRUB_CMDLINE' /etc/default/grub | awk -F ':' '{print $1}') of /etc/default/grub : adding the following ids ${varwrite[@]}"
-        read -p "Confirm? [y/n]" vargrub
-        [[ "$vargrub" =~ ^[yY]$ ]] && sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/vfio-pci.ids=//g" /etc/default/grub
-    fi
+        read -p "Confirm changes? [y/n]" vargrub
+        if [[ "$vargrub" =~ ^[yY]$ ]]; then
 #gummiboot support WIP
 elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
     #determining what folder gummiboot uses
