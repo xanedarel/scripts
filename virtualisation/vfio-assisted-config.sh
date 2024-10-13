@@ -24,7 +24,7 @@ CONFVFIO=$(ls $DIRDRACUT | grep vfio);
 if [ -z "$CONFVFIO" ]; then
     echo "No prior vfio configuration found, setting up $DIRDRACUT/20-vfio.conf (this requires running the script as root)"
     touch $DIRDRACUT/20-vfio.conf; echo "Adding the following line to $DIRDRACUT/20-vfio.conf"
-    echo "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" | tee $DIRDRACUT/20-vfio.conf
+    printf "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" | tee $DIRDRACUT/20-vfio.conf
     read -p "Regenerate initramfs now? [y/n]:" vargen; [[ "y" == "$vargen" ]] && dracut -f;
 else
     echo "Existing vfio configuration found: $DIRDRACUT/$CONFVFIO"
@@ -72,6 +72,7 @@ elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
 	IDDIR=/boot/loader
     CONFFILE=$IDDIR/loader.conf
     IDFILE=$(awk '{print $2}' $CONFFILE)
+    [[ -z $(grep -oE "options" $IDFILE) ]] && printf "options" >> $IDFILE
 fi
 
 #if you have a different bootloader or different configuration, you can override the $IDFILE variable here by uncommenting the following line and including the URI to the file where your pci.ids are written
@@ -114,15 +115,22 @@ for ((i=0; i < "${#arwrite[@]}"; i++)); do
     if [[ -n ${ardel[@]} ]]; then
         for ((target=0; target < "${#ardel[@]}"; target++)); do
         sed -i 's/${ardel[$target]}/${arwrite[$i]}/g' $IDFILE
+        unset ${arwrite[$i]}
         done
     else
 
 #reaching here if ardel is empty wip
+#modify $IDPARAM to change the seaked parameter in $IDFILE
+IDPARAM=vfio-pci.ids=
     elif [[ -z ${ardel[@]} ]]; then
         #if there is already ids in the $IDFILE and there is already a vfio-pci.ids= parameter
         if [[ -n $(grep -o "$vfioids" $IDFILE) && -n $(grep -o "vfio-pci.ids=" $IDFILE) ]]; then
-            [[ ]]
-
+        #if is there an ID after vfio-pci.ids=
+            if [[ -n $(grep -Eo "$IDPARAM([a-z0-9]\{4\}:[a-z0-9]\{4\}($|\"$| ))") ]]; then
+                sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT|^options/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g"
+                unset ${arwrite[$i]}
+            fi
+        elif [[ ]]
 
 
 
