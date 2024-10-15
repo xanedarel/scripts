@@ -57,10 +57,10 @@ read -p "IOMMU GROUP "  vargroup
 
 ##creating array of pci ids
 arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
-for i in $(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$vfioids"); arids+=($i); done
+for i in $(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$vfioids"); do arids+=($i); done
 
 echo "PCI IDs configuration: ${arids[*]}."
-read -p "Continue with these settings? [y/n]:" vardoconfig
+read -p "Continue with these settings? [y/N]:" vardoconfig
 [[ ! "$vardoconfig" =~ ^[yY]$ ]] && echo "exiting script" && exit
 #modify the array to fit the kernel's command line syntax
 varwriteids=$(echo ${arids[*]} | sed "s/ /,/g")
@@ -69,9 +69,8 @@ varwriteids=$(echo ${arids[*]} | sed "s/ /,/g")
 if [[ -f $(which grub 2>/dev/null) ]]; then
 	IDFILE=/etc/default/grub
 elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
-	IDDIR=/boot/loader
-    CONFFILE=$IDDIR/loader.conf
-    IDFILE=$(awk '{print $2}' $CONFFILE)
+    CONFFILE=/boot/loader/loader.conf
+    IDFILE=/boot/loader/entries/$(awk '{print $2}' $CONFFILE).conf
     [[ -z $(grep -oE "options" $IDFILE) ]] && printf "options" >> $IDFILE
 fi
 
@@ -79,8 +78,14 @@ fi
 #IDFILE=/path/to/file
 
 #> setting the pci.ids entries of $IDFILE
-avfio=$(grep -o "$vfioids" $IDFILE)
+for i in $(grep -o "$vfioids" $IDFILE); do
+	avfio+=($i)
+done
 #> For no preexisting config jump to line : x
+
+#DEBUG
+#echo "arids ${arids[@]}"
+#echo "avfio ${avfio[@]}"
 
 #Comparing those ids with iommuscript's output
 #   ardel is an array with ids in the bootloader's config file which do not match the output of this script;
@@ -107,7 +112,19 @@ done
 #the $line variable is only set for cosmetic reasons
 line=$(grep -En 'GRUB_CMDLINE|options' $IDFILE)
 #asking for user input confirmation with detected changes
-printf "Modifying line:$($IDFILE | awk -F ':' '{print $1}') of $IDFILE : adding the following ids ${varwrite[@]}"; [[ -n ${ardel[@]} ]] && ", removing the following ids ${ardel[@]}"
+
+#DEBUG>
+#echo "varwrite ${varwrite[@]}"
+#echo "vardel ${ardel[@]}"
+#/>
+if [[ -n "${varwrite[@]}" ]]; then
+	printf "Modifying line:$(awk -F ':' '{print $1}' <<< "$line") of "$IDFILE" : adding the following ids ${varwrite[@]}"
+	[[ -n "${ardel[@]}" ]] && ", removing the following ids ${ardel[@]} \n"
+elif [[ -z "${varwrite[@]}" && -z "${ardel[@]}" ]]; then
+	printf "No pci.ids to add or remove \n"
+	exit
+fi
+
 read -p "Confirm changes? [y/n]" varuserconf
 [[ ! "$vargrub" =~ ^[yY]$ ]] && exit
 # we can start by running through the ids to be deleted in ardel, if none are present we will write at the end of the string "vfio-pci.ids=" if present.
