@@ -67,8 +67,10 @@ varwriteids=$(echo ${arids[*]} | sed "s/ /,/g")
 #check wether /etc/default/grub already has pci.ids entries (todo: make sure to read from the "GRUB_CMDLINE_LINUX_DEFAULT=" line)
 #check which bootloader may be installed
 if [[ -f $(which grub 2>/dev/null) ]]; then
+    BOOT=grub
 	IDFILE=/etc/default/grub
 elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
+    BOOT=gummi
     CONFFILE=/boot/loader/loader.conf
     IDFILE=/boot/loader/entries/$(awk '{print $2}' $CONFFILE).conf
     [[ -z $(grep -oE "options" $IDFILE) ]] && printf "options" >> $IDFILE
@@ -133,22 +135,27 @@ for ((i=0; i < "${#arwrite[@]}"; i++)); do
         for ((target=0; target < "${#ardel[@]}"; target++)); do
         sed -i 's/${ardel[$target]}/${arwrite[$i]}/g' $IDFILE
         unset ${arwrite[$i]}
+        #start the next arwrite iteration
+        continue
         done
-    else
-
 #reaching here if ardel is empty wip
 #modify $IDPARAM to change the seaked parameter in $IDFILE
-IDPARAM=vfio-pci.ids=
+IDPARAM="vfio-pci.ids="
     elif [[ -z ${ardel[@]} ]]; then
-        #if there is already ids in the $IDFILE and there is already a vfio-pci.ids= parameter
-        if [[ -n $(grep -o "$vfioids" $IDFILE) && -n $(grep -o "vfio-pci.ids=" $IDFILE) ]]; then
-        #if is there an ID after vfio-pci.ids=
-            if [[ -n $(grep -Eo "$IDPARAM([a-z0-9]\{4\}:[a-z0-9]\{4\}($|\"$| ))") ]]; then
-                sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT|^options/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g"
+        #if there is already a vfio-pci.ids= parameter
+        if [[ -n $(grep -Eo "$IDPARAM") ]]; then
+                sed -i "/^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g"
                 unset ${arwrite[$i]}
-            fi
-        elif [[ ]]
-
+                continue
+        fi
+        #if there is neither ids nor vfio-pci.ids=
+        if [[ -z $(grep -Eo "$IDPARAM") ]]; then
+        [[ -n $(grep -oE "^options.*$" $IDFILE) ]] && end="$"
+        [[ -n $(grep -oE "^.*GRUB_CMDLINE_LINUX_DEFAULT.*\"$") ]] && end="\"$"
+        sed -i -E "/^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options s/$end/$IDPARAM${arwrite[$i]}$end/g"
+        fi
+    fi
+done
 
 
 
