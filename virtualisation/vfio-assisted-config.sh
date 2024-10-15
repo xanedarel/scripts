@@ -73,7 +73,7 @@ elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
     BOOT=gummi
     CONFFILE=/boot/loader/loader.conf
     IDFILE=/boot/loader/entries/$(awk '{print $2}' $CONFFILE).conf
-    [[ -z $(grep -oE "options" $IDFILE) ]] && printf "options" >> $IDFILE
+    [[ -z $(grep -o "options" $IDFILE) ]] && printf "options" >> $IDFILE
 fi
 
 #if you have a different bootloader or different configuration, you can override the $IDFILE variable here by uncommenting the following line and including the URI to the file where your pci.ids are written
@@ -143,13 +143,13 @@ for ((i=0; i < "${#arwrite[@]}"; i++)); do
 IDPARAM="vfio-pci.ids="
     elif [[ -z ${ardel[@]} ]]; then
         #if there is already a vfio-pci.ids= parameter
-        if [[ -n $(grep -Eo "$IDPARAM") ]]; then
+        if [[ -n $(grep -o "$IDPARAM") ]]; then
                 sed -i "/^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g"
                 unset ${arwrite[$i]}
                 continue
         fi
         #if there is neither ids nor vfio-pci.ids=
-        if [[ -z $(grep -Eo "$IDPARAM") ]]; then
+        if [[ -z $(grep -o "$IDPARAM") ]]; then
         end=$(grep -E "^.*options|^.*GRUB_CMDLINE_LINUX_DEFAULT" $IDFILE | grep -oE "[^A-Za-z0-9]$")
         sed -i -E "/^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options s/$end/ $IDPARAM${arwrite[$i]}$end/g"
         fi
