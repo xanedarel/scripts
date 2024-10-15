@@ -150,8 +150,7 @@ IDPARAM="vfio-pci.ids="
         fi
         #if there is neither ids nor vfio-pci.ids=
         if [[ -z $(grep -Eo "$IDPARAM") ]]; then
-        [[ -n $(grep -oE "^options.*$" $IDFILE) ]] && end="$"
-        [[ -n $(grep -oE "^.*GRUB_CMDLINE_LINUX_DEFAULT.*\"$") ]] && end="\"$"
+        end=$(grep -E "^.*options|^.*GRUB_CMDLINE_LINUX_DEFAULT" $IDFILE | grep -oE ".$")
         sed -i -E "/^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options s/$end/$IDPARAM${arwrite[$i]}$end/g"
         fi
     fi
