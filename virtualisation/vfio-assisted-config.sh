@@ -9,8 +9,7 @@
 
 #             Always read a script you download from the internet.             #
 
-##checking dracut configuration folders and the status of a vfio.conf file
-
+# checking dracut configuration folders and the status of a vfio.conf file
 DIRDRACUT=/etc/dracut.conf.d
 if [[ ! -d "$DIRDRACUT" ]]; then
 	echo "Script obsolete review dracut.conf.d"
@@ -30,8 +29,8 @@ else
 	echo "Existing vfio configuration found: $DIRDRACUT/$CONFVFIO"
 fi
 
-##setting up the iommu script function
-# iommu script from https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
+# setting up the iommu script function
+# function from https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
 function iommuscript {
 	# change the 999 if needed
 	shopt -s nullglob
@@ -42,7 +41,7 @@ function iommuscript {
 	done;
 }
 
-##get pci.ids values from the IOMMU group of target gpu pci device
+# get pci.ids values from the IOMMU group of target gpu pci device
 echo "Please enter your GPU manufacturer [Press enter for unknown]"
 read vargpumkr
 if [ -z "$vargpumkr" ]; then
@@ -55,21 +54,20 @@ fi
 echo "Please enter the IOMMU group which you would like to passthrough:"
 read -p "IOMMU GROUP "  vargroup
 
-##creating array of pci ids
+# creating array of pci ids
 arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
 	for i in $(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$vfioids"); do arids+=($i); done
 
 	echo -e "PCI IDs configuration: ${arids[*]}"
-	read -p "Continue with these settings? [y/N]:" vardoconfig
+	read -p "Continue with these settings? [y/N]" vardoconfig
 	[[ ! "$vardoconfig" =~ ^[yY]$ ]] && echo "exiting script" && exit
-	#modify the array to fit the kernel's command line syntax
+	# modify the array to fit the kernel's command line syntax
 	varwriteids=$(echo ${arids[*]} | sed "s/ /,/g")
-	#check wether /etc/default/grub already has pci.ids entries (todo: make sure to read from the "GRUB_CMDLINE_LINUX_DEFAULT=" line)
-	#check which bootloader may be installed
+	# check which bootloader may be installed
+	# todo: use install instead of cp
 	if [[ -f $(which grub 2>/dev/null) ]]; then
 		IDFILE=/etc/default/grub
 		cp $IDDIR/$BOOT /etc/default/backup.grub
-		#DEBUG TESTING GRUB
 	elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
 		CONFFILE=/boot/loader/loader.conf
 		IDFILE=/boot/loader/entries/$(awk '{print $2}' $CONFFILE).conf
@@ -77,7 +75,7 @@ arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
 		[[ -z $(grep -o "options" $IDFILE) ]] && printf "options" >> $IDFILE
 	fi
 
-# If you have a different bootloader or different configuration, you can override the $IDFILE variable here by uncommenting the following line and including the URI to the file where your pci.ids are written
+# you can override the $IDFILE variable here
 #IDFILE=/path/to/file
 
 for i in $(grep -o "$vfioids" $IDFILE); do
@@ -85,15 +83,12 @@ for i in $(grep -o "$vfioids" $IDFILE); do
 done
 
 # Comparing those ids with iommuscript's output
-# ardel is an array with ids in the bootloader's config file which do not match the output of this script;
-# checking against avfio
 for ((i=0; i < "${#avfio[@]}"; i++)); do
 	if [[ ! " ${arids[@]} " =~ "${avfio[$i]}" ]];
 	then ardel+=(${avfio[$i]})
-		#removing that id from avfio so that only ids matching with arids remain in it
 	fi
 done
-# Running that comparison again this time checking whether any entry in arids is already present in the bootloader's config file, if it isn't, it needs to be written and is added to the array arwrite
+
 for ((i=0; i < "${#arids[@]}"; i++)); do
 	if [[ ! " ${avfio[@]} " =~ "${arids[$i]}" ]]
 	then arwrite+=(${arids[$i]})
@@ -103,7 +98,6 @@ done
 ## Writing changes to files
 # The $line variable is only set for cosmetic reasons
 line=$(grep -En "GRUB_CMDLINE_LINUX_DEFAULT|options" $IDFILE | head -n 1)
-echo "$line"
 
 if [[ -n "${arwrite[@]}" ]]; then
 	printf "Modifying line:$(awk -F ':' '{print $1}' <<< "$line") of "$IDFILE" \nAdding ids : ${arwrite[*]}\n"
@@ -116,7 +110,6 @@ fi
 read -p "Confirm changes? [y/n]" varuserconf
 [[ ! "$varuserconf" =~ ^[yY]$ ]] && exit
 # we can start by running through the ids to be deleted in ardel, if none are present we will write at the end of the string "vfio-pci.ids=" if present.
-echo "arwrite ${arwrite[@]}"; echo "total "${#arwrite[@]}""
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
 	if [[ -n "${ardel[@]}" ]]; then
 		sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $IDFILE
@@ -129,10 +122,9 @@ for ((i=0; i < "${#arwrite[@]}"; i++)); do
 		fi
 		if [[ -z $(grep -o "$IDPARAM" $IDFILE) ]]; then
 		end=$(grep -E "$BOOTGLOB" $IDFILE | grep -oE "\"$")
-		[[ -z "$end" ]] && sed -i -E "/$BOOTGLOB/ s/$/$IDPARAM${varwriteids[*]}/g" $IDFILE
-		[[ -n "$end" ]] && sed -i -E "/$BOOTGLOB/ s/$end/$IDPARAM${varwriteids[*]}$end/g" $IDFILE
+		[[ -z "$end" ]] && sed -i -E "/$BOOTGLOB/ s/$/ $IDPARAM${varwriteids[*]}/g" $IDFILE
+		[[ -n "$end" ]] && sed -i -E "/$BOOTGLOB/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" $IDFILE
 		break
 		fi
 	fi
-	#checking if there is any additional values to be deleted through ardel
 done
