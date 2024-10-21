@@ -14,16 +14,14 @@ DIRDRACUT=/etc/dracut.conf.d
 if [[ ! -d "$DIRDRACUT" ]]; then
 	echo "Script obsolete review dracut.conf.d"
 	exit
-else
-	echo "Dracut configuration folder found;"
 fi
 
 CONFVFIO=$(ls $DIRDRACUT | grep vfio);
 
 if [ -z "$CONFVFIO" ]; then
 	echo "No prior vfio configuration found, setting up $DIRDRACUT/20-vfio.conf (this requires running the script as root)"
-	touch $DIRDRACUT/20-vfio.conf; echo "Adding the following line to $DIRDRACUT/20-vfio.conf"
-	printf "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" | tee $DIRDRACUT/20-vfio.conf
+	echo "Adding the following line to $DIRDRACUT/20-vfio.conf"
+	tee $DIRDRACUT/20-vfio.conf <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""  
 	read -p "Regenerate initramfs now? [y/n]:" vargen; [[ "y" == "$vargen" ]] && dracut -f && clear;
 else
 	echo "Existing vfio configuration found: $DIRDRACUT/$CONFVFIO"
@@ -51,13 +49,22 @@ elif [[ -n "$vargpumkr" ]]; then
 	displaygroups=$(iommuscript | grep -i "$vargpumkr")
 	[[ -n "$displaygroups" ]] && echo "$displaygroups" || echo -e "No match found, displaying all IOMMU groups:\n" || iommuscript
 fi
-echo "Please enter the IOMMU group which you would like to passthrough:"
+echo "Please enter the main IOMMU group which you would like to passthrough:"
+echo "You can passthrough multiple IOMMU groups with a comma, eg: 18,24,32"
 read -p "IOMMU GROUP "  vargroup
 
+#check for spaces / commas
+argroups=()
+echo "grep check"
+if [ -n $(grep -E "[ ,]" <<< "$vargroup") ]; then
+	newgroups=$(sed 's/,/ /g' <<< $vargroup)
+	for i in $newgroups; do argroups+=($i); done
+fi
+echo "grep checked"
 # creating array of pci ids
+echo "${argroups[*]}"
 arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
-	for i in $(iommuscript | grep "IOMMU Group $vargroup" | grep -o "$vfioids"); do arids+=($i); done
-
+	for i in "${argroups[@]}"; do id=$(iommuscript | grep "IOMMU Group $i" | grep -o "$vfioids"); arids+=($id); done
 	echo -e "PCI IDs configuration: ${arids[*]}"
 	read -p "Continue with these settings? [y/N]" vardoconfig
 	[[ ! "$vardoconfig" =~ ^[yY]$ ]] && echo "exiting script" && exit
@@ -75,7 +82,7 @@ arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
 		[[ -z $(grep -o "options" $IDFILE) ]] && printf "options" >> $IDFILE
 	fi
 
-# you can override the $IDFILE variable here
+# you can override the $IDFILE variable here 
 #IDFILE=/path/to/file
 
 for i in $(grep -o "$vfioids" $IDFILE); do
