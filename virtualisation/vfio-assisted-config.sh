@@ -55,12 +55,12 @@ read -p "IOMMU GROUP "  vargroup
 
 #check for spaces / commas
 argroups=()
-echo "grep check"
+
 if [ -n $(grep -E "[ ,]" <<< "$vargroup") ]; then
 	newgroups=$(sed 's/,/ /g' <<< $vargroup)
 	for i in $newgroups; do argroups+=($i); done
 fi
-echo "grep checked"
+
 # creating array of pci ids
 echo "${argroups[*]}"
 arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
