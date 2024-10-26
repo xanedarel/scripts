@@ -19,16 +19,15 @@ fi
 CONFVFIO=$(ls $DIRDRACUT | grep vfio);
 
 if [ -z "$CONFVFIO" ]; then
-	echo "No prior vfio configuration found, setting up $DIRDRACUT/20-vfio.conf (this requires running the script as root)"
+	echo "Setting up $DIRDRACUT/20-vfio.conf"
 	echo "Adding the following line to $DIRDRACUT/20-vfio.conf"
 	tee $DIRDRACUT/20-vfio.conf <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""  
-	read -p "Regenerate initramfs now? [y/n]:" vargen; [[ "y" == "$vargen" ]] && dracut -f && clear;
-else
-	echo "Existing vfio configuration found: $DIRDRACUT/$CONFVFIO"
+	read -p "Regenerate initramfs now? [y/n]:" vargen
+	[[ "y" == "$vargen" ]] && dracut -f && clear;
 fi
 
 # setting up the iommu script function
-# function from https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
+# https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
 function iommuscript {
 	# change the 999 if needed
 	shopt -s nullglob
@@ -62,14 +61,13 @@ if [ -n $(grep -E "[ ,]" <<< "$vargroup") ]; then
 fi
 
 # creating array of pci ids
-echo "${argroups[*]}"
 arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
 	for i in "${argroups[@]}"; do id=$(iommuscript | grep "IOMMU Group $i" | grep -o "$vfioids"); arids+=($id); done
 	echo -e "PCI IDs configuration: ${arids[*]}"
 	read -p "Continue with these settings? [y/N]" vardoconfig
 	[[ ! "$vardoconfig" =~ ^[yY]$ ]] && echo "exiting script" && exit
 	# modify the array to fit the kernel's command line syntax
-	varwriteids=$(echo ${arids[*]} | sed "s/ /,/g")
+	varwriteids=$(sed "s/ /,/g" <<< ${arids[*]})
 	# check which bootloader may be installed
 	# todo: use install instead of cp
 	if [[ -f $(which grub 2>/dev/null) ]]; then
