@@ -114,21 +114,22 @@ fi
 
 read -p "Confirm changes? [y/n]" varuserconf
 [[ ! "$varuserconf" =~ ^[yY]$ ]] && exit
-# we can start by running through the ids to be deleted in ardel, if none are present we will write at the end of the string "vfio-pci.ids=" if present.
+# we can start by running through the ids to be deleted in ardel, 
+# if none are present we will write at the end of the string "vfio-pci.ids=" 
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
 	if [[ -n "${ardel[@]}" ]]; then
 		sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $IDFILE
 	elif [[ -z "${ardel[@]}" ]]; then
-		BOOTGLOB="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
+		BOOTPATTERN="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
 		IDPARAM="vfio-pci.ids="
 		if [[ -n $(grep -o "$IDPARAM" $IDFILE) ]]; then
-			sed -i "/$BOOTGLOB/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $IDFILE
+			sed -i "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $IDFILE
 			continue
 		fi
 		if [[ -z $(grep -o "$IDPARAM" $IDFILE) ]]; then
-		end=$(grep -E "$BOOTGLOB" $IDFILE | grep -oE "\"$")
-		[[ -z "$end" ]] && sed -i -E "/$BOOTGLOB/ s/$/ $IDPARAM${varwriteids[*]}/g" $IDFILE
-		[[ -n "$end" ]] && sed -i -E "/$BOOTGLOB/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" $IDFILE
+		end=$(grep -E "$BOOTPATTERN" $IDFILE | grep -oE "\"$")
+		[[ -z "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$/ $IDPARAM${varwriteids[*]}/g" $IDFILE
+		[[ -n "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" $IDFILE
 		break
 		fi
 	fi
