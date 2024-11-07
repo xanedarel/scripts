@@ -19,11 +19,11 @@ fi
 CONFVFIO=$(ls $DIRDRACUT | grep vfio);
 
 if [ -z "$CONFVFIO" ]; then
-	echo "Setting up $DIRDRACUT/20-vfio.conf"
-	echo "Adding the following line to $DIRDRACUT/20-vfio.conf"
-	tee $DIRDRACUT/20-vfio.conf <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""  
+	last=$(ls -m $DIRDRACUT | sed 's/^.*, //g' | sed -e 's/[^0-9].*//g'); last=$((last + 10))
+	echo "Adding the following line to $DIRDRACUT/$last-vfio.conf"
+	tee $DIRDRACUT/$last-vfio.conf <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
 	read -p "Regenerate initramfs now? [y/n]:" vargen
-	[[ "y" == "$vargen" ]] && dracut -f && clear;
+	if [[ "y" == "$vargen" ]]; then dracut -f ; fi
 fi
 
 # setting up the iommu script function
