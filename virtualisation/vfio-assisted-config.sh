@@ -39,7 +39,7 @@ function iommuscript {
 }
 
 # get pci.ids values from the IOMMU group of target gpu pci device
-echo "Please enter your GPU manufacturer [Press enter for unknown]"
+echo "Please enter your PCI device manufacturer [Press enter for unknown]"
 read vargpumkr
 if [ -z "$vargpumkr" ]; then
 	echo "No manufacturer entered, displaying all IOMMU groups:" && sleep 2
@@ -72,15 +72,25 @@ arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
 	# todo: use install instead of cp
 	if [[ -f $(which grub 2>/dev/null) ]]; then
 		IDFILE=/etc/default/grub
-		cp $IDDIR/$BOOT /etc/default/backup.grub
-	elif [[ -f $(which gummiboot 2>/dev/null) ]]; then
-		CONFFILE=/boot/loader/loader.conf
-		IDFILE=/boot/loader/entries/$(awk '{print $2}' $CONFFILE).conf
-		cp $IDFILE /boot/loader/entries/backup
-		[[ -z $(grep -o "options" $IDFILE) ]] && printf "options" >> $IDFILE
+		cp -p $IDDIR/$BOOT /etc/default/backup.grub
+	elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]]; then
+		LOADER=loader.conf
+		[[ -d /efi ]] && CONFFILE=$(find /efi -name $LOADER 2>/dev/null)
+		[[ -d /boot && -z "$CONFFILE" ]] && CONFFILE=$(find /boot -name $LOADER 2>/dev/null)
+		
+		# CONFFILE override (eg: /boot )
+		#CONFFILE=/path
+
+		[[ -z "$CONFFILE" ]] && echo "Could not find the proper boot folder; exiting" && exit
+		CONFDIR=$(sed 's/\/[A-Za-z0-9]*.conf//g' <<< $CONFFILE)
+		IDPATH="$CONFDIR/entries/"
+		IDFILE=$(grep default "$CONFFILE" | awk '{print $2}').conf
+		cp -p "$IDPATH$IDFILE" "$(sed 's/\/$//g' <<< $IDPATH)/backup.$IDFILE"
+		IDFILE="$IDPATH$IDFILE"
+		[[ -z $(grep -o "options" "$IDFILE") ]] && printf "options" >> "$IDFILE"
 	fi
 
-# you can override the $IDFILE variable here 
+# you can override the $IDFILE variable here
 #IDFILE=/path/to/file
 
 for i in $(grep -o "$vfioids" $IDFILE); do
@@ -114,16 +124,19 @@ fi
 
 read -p "Confirm changes? [y/n]" varuserconf
 [[ ! "$varuserconf" =~ ^[yY]$ ]] && exit
-# we can start by running through the ids to be deleted in ardel, 
-# if none are present we will write at the end of the string "vfio-pci.ids=" 
+# we can start by running through the ids to be deleted in ardel,
+# if none are present we will write at the end of the string "vfio-pci.ids="
+
+# nuclear options : sed -i -E "/^options/ s/([0-9A-Za-z]{4}:[0-9A-Za-z]{4}[, ])*//g" /efi/loader/entries/6.6.58-gentoo-dist.conf
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
 	if [[ -n "${ardel[@]}" ]]; then
 		sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $IDFILE
+		echo "unset ${ardel[$i]}"
 	elif [[ -z "${ardel[@]}" ]]; then
 		BOOTPATTERN="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
 		IDPARAM="vfio-pci.ids="
 		if [[ -n $(grep -o "$IDPARAM" $IDFILE) ]]; then
-			sed -i "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $IDFILE
+			sed -i -E "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $IDFILE
 			continue
 		fi
 		if [[ -z $(grep -o "$IDPARAM" $IDFILE) ]]; then
