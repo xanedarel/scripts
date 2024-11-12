@@ -137,18 +137,24 @@ fi
 # if none are present we will write at the end of the string "vfio-pci.ids="
 
 # nuclear options : sed -i -E "/^options/ s/([0-9A-Za-z]{4}:[0-9A-Za-z]{4}[, ])*//g" /efi/loader/entries/6.6.58-gentoo-dist.conf
+
+# debug
+#echo "ardel ${ardel[@]}"
+#echo "arwrite ${arwrite[@]}"
+#
+
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
 	if [[ -n "${ardel[@]}" ]]; then
 		sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $BOOTFILE
-		echo "unset ${ardel[$i]}"
+		del="${ardel[$i]}"
+		ardel=("${ardel[@]/$del}")
 	elif [[ -z "${ardel[@]}" ]]; then
 		BOOTPATTERN="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
 		IDPARAM="vfio-pci.ids="
 		if [[ -n $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
 			sed -i -E "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $BOOTFILE
 			continue
-		fi
-		if [[ -z $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
+		elif [[ -z $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
 		end=$(grep -E "$BOOTPATTERN" $BOOTFILE | grep -oE "\"$")
 		[[ -z "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$/ $IDPARAM${varwriteids[*]}/g" $BOOTFILE
 		[[ -n "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" $BOOTFILE
@@ -156,3 +162,15 @@ for ((i=0; i < "${#arwrite[@]}"; i++)); do
 		fi
 	fi
 done
+
+# Checking if there are any more ids to delete
+# todo: finish this monster
+	for ((i=0; i < ${#ardel[@]}; i++)); do
+	[[ -n ${ardel[$i]} ]] && sed -i "s/${ardel[$i]}//g" $BOOTFILE
+	# checking for any number of commas "," trailing the end line
+	[[ -n $(grep $BOOTPATTERN <<< $BOOTFILE | grep -o ",\{2,\}") ]] && sed -i -e "/[[:alnum:]]\{4\}:[[:alnum:]]\{4\} s/,\{2,\}[ \$]//g" $BOOTFILE
+	done
+
+# Final user confirmation
+#echo "The boot configuration has been modyfied:"
+#echo "$(diff $BOOTFILE $IDDIR/
