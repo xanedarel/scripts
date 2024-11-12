@@ -9,7 +9,11 @@
 
 #             Always read a script you download from the internet.             #
 
-# checking dracut configuration folders and the status of a vfio.conf file
+# note: variables with in CAPITAL LETTERS can be modified by the end user depending on
+# local configuration and needs
+
+
+# Checking dracut configuration folders and the status of a vfio.conf file
 DIRDRACUT=/etc/dracut.conf.d
 if [[ ! -d "$DIRDRACUT" ]]; then
 	echo "Script obsolete review dracut.conf.d"
@@ -62,17 +66,21 @@ fi
 
 # creating array of pci ids
 arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
-	for i in "${argroups[@]}"; do id=$(iommuscript | grep "IOMMU Group $i" | grep -o "$vfioids"); arids+=($id); done
+	
+	for i in "${argroups[@]}"
+		do id=$(iommuscript | grep "IOMMU Group $i" | grep -o "$vfioids")
+		arids+=($id)
+	done
+	
 	echo -e "PCI IDs configuration: ${arids[*]}"
-	read -p "Continue with these settings? [y/N]" vardoconfig
-	[[ ! "$vardoconfig" =~ ^[yY]$ ]] && echo "exiting script" && exit
 	# modify the array to fit the kernel's command line syntax
 	varwriteids=$(sed "s/ /,/g" <<< ${arids[*]})
 	# check which bootloader may be installed
-	# todo: use install instead of cp
+	# todo: use install instead of cp (may be ok with cp -p ?)
 	if [[ -f $(which grub 2>/dev/null) ]]; then
-		IDFILE=/etc/default/grub
-		cp -p $IDDIR/$BOOT /etc/default/backup.grub
+		BOOTFILE=/etc/default/grub
+		cp -p $BOOTFILE /etc/default/backup.grub
+	#also check for gummiboot / systemd-boot (same conf)
 	elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]]; then
 		LOADER=loader.conf
 		[[ -d /efi ]] && CONFFILE=$(find /efi -name $LOADER 2>/dev/null)
@@ -82,18 +90,21 @@ arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
 		#CONFFILE=/path
 
 		[[ -z "$CONFFILE" ]] && echo "Could not find the proper boot folder; exiting" && exit
-		CONFDIR=$(sed 's/\/[A-Za-z0-9]*.conf//g' <<< $CONFFILE)
-		IDPATH="$CONFDIR/entries/"
+
+		IDPATH="$(sed 's/\/[A-Za-z0-9]*.conf//g' <<< $CONFFILE)/entries/"
 		IDFILE=$(grep default "$CONFFILE" | awk '{print $2}').conf
 		cp -p "$IDPATH$IDFILE" "$(sed 's/\/$//g' <<< $IDPATH)/backup.$IDFILE"
-		IDFILE="$IDPATH$IDFILE"
-		[[ -z $(grep -o "options" "$IDFILE") ]] && printf "options" >> "$IDFILE"
-	fi
+		BOOTFILE="$IDPATH$IDFILE"
+		[[ -z $(grep -o "options" "$BOOTFILE") ]] && printf "options" >> "$BOOTFILE"
+		# Check with the user that the right boot file is used
+		read -p "Boot configuration detected = $BOOTFILE [y/N]:" varboot
+		[[ ! "$varboot" =~ ^[yY]$ ]] && exit
+fi
 
 # you can override the $IDFILE variable here
 #IDFILE=/path/to/file
 
-for i in $(grep -o "$vfioids" $IDFILE); do
+for i in $(grep -o "$vfioids" $BOOTFILE); do
 	avfio+=($i)
 done
 
@@ -112,37 +123,35 @@ done
 
 ## Writing changes to files
 # The $line variable is only set for cosmetic reasons
-line=$(grep -En "GRUB_CMDLINE_LINUX_DEFAULT|options" $IDFILE | head -n 1)
+line=$(grep -En "GRUB_CMDLINE_LINUX_DEFAULT|options" $BOOTFILE | head -n 1)
 
 if [[ -n "${arwrite[@]}" ]]; then
-	printf "Modifying line:$(awk -F ':' '{print $1}' <<< "$line") of "$IDFILE" \nAdding ids : ${arwrite[*]}\n"
+	printf "Modifying line:$(awk -F ':' '{print $1}' <<< "$line") of "$BOOTFILE" \nAdding ids : ${arwrite[*]}\n"
 	[[ -n "${ardel[@]}" ]] && printf "Removing ids : ${ardel[*]} \n"
 elif [[ -z "$arwrite[@]}" && -z "${ardel[@]}" ]]; then
 	echo "No pci.ids to add or remove \n"
 	exit
 fi
 
-read -p "Confirm changes? [y/n]" varuserconf
-[[ ! "$varuserconf" =~ ^[yY]$ ]] && exit
 # we can start by running through the ids to be deleted in ardel,
 # if none are present we will write at the end of the string "vfio-pci.ids="
 
 # nuclear options : sed -i -E "/^options/ s/([0-9A-Za-z]{4}:[0-9A-Za-z]{4}[, ])*//g" /efi/loader/entries/6.6.58-gentoo-dist.conf
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
 	if [[ -n "${ardel[@]}" ]]; then
-		sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $IDFILE
+		sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $BOOTFILE
 		echo "unset ${ardel[$i]}"
 	elif [[ -z "${ardel[@]}" ]]; then
 		BOOTPATTERN="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
 		IDPARAM="vfio-pci.ids="
-		if [[ -n $(grep -o "$IDPARAM" $IDFILE) ]]; then
-			sed -i -E "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $IDFILE
+		if [[ -n $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
+			sed -i -E "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $BOOTFILE
 			continue
 		fi
-		if [[ -z $(grep -o "$IDPARAM" $IDFILE) ]]; then
-		end=$(grep -E "$BOOTPATTERN" $IDFILE | grep -oE "\"$")
-		[[ -z "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$/ $IDPARAM${varwriteids[*]}/g" $IDFILE
-		[[ -n "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" $IDFILE
+		if [[ -z $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
+		end=$(grep -E "$BOOTPATTERN" $BOOTFILE | grep -oE "\"$")
+		[[ -z "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$/ $IDPARAM${varwriteids[*]}/g" $BOOTFILE
+		[[ -n "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" $BOOTFILE
 		break
 		fi
 	fi
