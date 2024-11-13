@@ -7,7 +7,7 @@ this guide follows the instruction method using the gui virt-manager package
 
 #### Install the required packages
 ```
-# xbps-install -S virtmanager libvirt qemu
+# xbps-install -S virtmanager libvirt qemu edk2-ovmf
 ```
 create symlinks for libvirt deamons in the services directory
 ```
@@ -45,7 +45,7 @@ app-emulation/virt-manager gui
 #### Finally install the packages :
 app-emulation/virt-manager is optional and for GUI
 ```
-# emerge -a app-emulation/qemu app-emulation/libvirt app-emulation/virt-manager
+# emerge -a app-emulation/qemu app-emulation/libvirt app-emulation/virt-manager sys-firmware/edk2
 ```
      
 </details>
