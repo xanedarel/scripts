@@ -1,6 +1,11 @@
-## installing and setting up virt-manager
+## Installing and setting up virt-manager
 this guide follows the instruction method using the gui virt-manager package
 > minimal solution with only qemu & libvirt in progress
+<details>
+
+<summary>Void Linux Installation</summary>
+
+#### Install the required packages
 ```
 # xbps-install -S virtmanager libvirt qemu
 ```
@@ -10,23 +15,58 @@ create symlinks for libvirt deamons in the services directory
 # ln -s /etc/sv/virtlogd /var/service
 # ln -s /etc/sv/libvirtd /var/service
 ```
-either reboot the system or run `# sv up <deamon>` for every deamon (ie. virtlockd)
+either reboot the system or run `# sv up <deamon>` for every deamon (ie. `sv up virtlockd` , etc.)
 
-You may also need to change your $user groups :
+</details>
+
+<details>
+
+<summary>Gentoo Linux Installation</summary>
+
+#### Setting up your package.use file
+Create a new file in `/etc/portage/package.use/XX-qemu`, eg:
 ```
-# usermod -aG input <$user>
-# usermod -aG libvirt <$user> 
+vim /etc/portage/package.use/15-qemu
+```
+```
+# qemu
+app-emulation/qemu -oss fuse nfs usbredir spice usb
+
+# libvirt
+app-emulation/libvirt fuse lvm nbd
+>=net-dns/dnsmasq-2.90 script
+>=net-libs/gnutls-3.8.7.1-r1 pkcs11 tools
+
+# optional : if you wish to use a GUI manager
+# virtmanager
+app-emulation/virt-manager gui
+>=net-misc/spice-gtk-0.42-r4 usbredir gtk3
+```
+#### Finally install the packages :
+app-emulation/virt-manager is optional and for GUI
+```
+# emerge -a app-emulation/qemu app-emulation/libvirt app-emulation/virt-manager
+```
+     
+</details>
+
+
+## Continuing configuration
+You also need to add your user account to groups :
+```
+# usermod -aG input <user>
+# usermod -aG libvirt <user> 
 ```
 > Replace <$user> with your user account, ex: usermod -aG input elise
 
 set up vfio gpu drivers is the next step before creating the vm:
 
-## setting up vfio pci ids with the script in ./
+## Setting up vfio pci ids with the script in ./
 ### Use the script vfio-assisted-config.sh
 Done.
 
 or:
-## manual steps
+## Manual steps
 run `./scripts/iommu.sh` on the host system to display devices with IOMMU groups and their respective pci.ids
 ```
 $ bash ./iommu.sh
@@ -40,7 +80,7 @@ IOMMU Group 23 ...
 >
 Take note of the pci.ids at the end of the lines of all devices in the target's IOMMU group, here:
 `[10de:1c82]` & `[10de:0fb9]`
-## include those devices into the vfio-pci.ids kernel parameter
+## Include those devices into the vfio-pci.ids kernel parameter
 edit the `GRUB_CMDLINE_LINUX_DEFAULT=` line in `/etc/default/grub` by adding `vfio-pci.ids=<ID>,<ID2>` for example:
 ```
 GRUB_CMDLINE_LINUX_DEFAULT="vfio-pci.ids=10de:1c82,10de:0fb9 loglevel=4"
@@ -50,7 +90,7 @@ don't forget to update grub
 # update-grub
 ```
 
-## ensuring the vfio driver is loaded early at boot
+## Ensuring the vfio driver is loaded early at boot
 modify `/etc/dracut.conf.d/20-vfio.conf` with a text editor:
 ```
 force_drivers+=" vfio_pci vfio vfio_iommu_type1 "
@@ -65,7 +105,7 @@ or run
 ```
 (replace <x.x> with version number ie : 6.6)
 
-## reboot your device to ensure that the GPU is bound to the VFIO drivers
+## Reboot your device to ensure that the GPU is bound to the VFIO drivers
 ```
 # lspci -k | grep -A 2 'NVIDIA'
 ```
