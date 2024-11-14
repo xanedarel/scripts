@@ -1,8 +1,12 @@
 # banepanel-scripts
 Useful scripts for GNU/Linux systems.
+
 `
-supported method [Y]
-unsupported method [N]
+[Y] supported 
+`
+
+`
+[N] unsupported 
 `
 
 ## Virtualisation
