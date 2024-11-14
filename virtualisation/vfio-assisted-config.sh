@@ -65,7 +65,7 @@ if [ -n $(grep -E "[ ,]" <<< "$vargroup") ]; then
 fi
 
 # creating array of pci ids
-arids=(); vfioids="[0-9A-Za-z]\{4\}:[0-9A-Za-z]\{4\}"
+arids=(); vfioids="[[:alnum:]]\{4\}:[[:alnum:]]\{4\}"
 	
 	for i in "${argroups[@]}"
 		do id=$(iommuscript | grep "IOMMU Group $i" | grep -o "$vfioids")
