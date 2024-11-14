@@ -1,10 +1,14 @@
 # banepanel-scripts
 Useful scripts for GNU/Linux systems.
+`
+supported method [Y]
+unsupported method [N]
+`
 
 ## Virtualisation
 - VFIO Assisted Config :
     Automatically add the required PCI addresses to your bootloader and initramfs configuration
     
-    Bootloader : grub [V] | gummiboot / systemd-boot [V] | efistub [X]
+    Bootloader : grub [Y] | gummiboot / systemd-boot [Y] | efistub [N]
 
-    initramfs : dracut [V] | mkinitcpio [X]
+    initramfs : dracut [Y] | mkinitcpio [N]
