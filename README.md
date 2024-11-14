@@ -5,6 +5,6 @@ Useful scripts for GNU/Linux systems.
 - VFIO Assisted Config :
     Automatically add the required PCI addresses to your bootloader and initramfs configuration
     
-    Bootloader compatibility : Grub & Gummiboot/Systemd-Boot.
+    Bootloader : grub [V] | gummiboot / systemd-boot [V] | efistub [X]
 
-    Limited to dracut for initramfs configuration
+    initramfs : dracut [V] | mkinitcpio [X]
