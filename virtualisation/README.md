@@ -45,7 +45,7 @@ app-emulation/virt-manager gui
 #### Finally install the packages :
 app-emulation/virt-manager is optional and for GUI
 ```
-# emerge -a app-emulation/qemu app-emulation/libvirt app-emulation/virt-manager sys-firmware/edk2
+# emerge -a app-emulation/qemu app-emulation/libvirt sys-firmware/edk2 app-emulation/virt-manager 
 ```
      
 </details>
@@ -61,13 +61,24 @@ You also need to add your user account to groups :
 
 set up vfio gpu drivers is the next step before creating the vm:
 
-## Setting up vfio pci ids with the script in ./
-### Use the script vfio-assisted-config.sh
-Done.
+## Setting up vfio pci ids with vfio-assisted-config.sh
+Use the script (needs root priviledges to edit system configuration files and generate the initramfs)
 
-or:
+Done :)
+
+or :
 ## Manual steps
-run `./scripts/iommu.sh` on the host system to display devices with IOMMU groups and their respective pci.ids
+run the follow command on the host system to display devices with IOMMU groups and their respective pci.ids
+```
+	shopt -s nullglob
+	for d in /sys/kernel/iommu_groups/{0..999}/devices/*; do
+		n=${d#*/iommu_groups/*}; n=${n%%/*}
+		printf 'IOMMU Group %s ' "$n"
+		lspci -nns "${d##*/}"
+	done;
+```
+(you should be able to copy and paste directly in your shell, or put it in a .sh file if you prefer to run it manually)
+
 ```
 $ bash ./iommu.sh
 [...]
