@@ -16,16 +16,16 @@
 # Checking dracut configuration folders and the status of a vfio.conf file
 DIRDRACUT=/etc/dracut.conf.d
 if [[ ! -d "$DIRDRACUT" ]]; then
-	echo "Either dracut is not installed or the configuration folder \
-	doesn't exist, if dracut is installed please create /etc/dracut.conf.d/ \
-	with necessary permissions"
+echo "Either dracut is not installed or the configuration folder \
+doesn't exist, if dracut is installed please create /etc/dracut.conf.d/ \
+with necessary permissions"
 	exit
 fi
 
 DRACUTARGS="vfio_pci vfio vfio_iommu_type1"
 DRACUTCONF="99-vfio.conf"
 dracutvfio="$(grep -ER "(force_drivers)?.*\
-			($(sed "s/ /|/g" <<< $DRACUTARGS))" \$DIRDRACUT)"
+($(sed "s/ /|/g" <<< $DRACUTARGS))" \$DIRDRACUT)"
 dracutfp="$DIRDRACUT/$DRACUTCONF"
 
 if [[ -z "$dracutvfio" ]]; then
@@ -140,7 +140,7 @@ line=$(grep -En "GRUB_CMDLINE_LINUX_DEFAULT|options" $BOOTFILE | head -n 1)
 
 if [[ -n "${arwrite[@]}" ]]; then
 	printf "Modifying line:$(awk -F ':' '{print $1}' <<< "$line") \
-	of "$BOOTFILE" \nAdding ids : ${arwrite[*]}\n"
+of "$BOOTFILE" \nAdding ids : ${arwrite[*]}\n"
 	[[ -n "${ardel[@]}" ]] && printf "Removing ids : ${ardel[*]} \n"
 elif [[ -z "$arwrite[@]}" && -z "${ardel[@]}" ]]; then
 	echo "No pci.ids to add or remove \n"
