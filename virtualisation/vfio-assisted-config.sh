@@ -28,12 +28,12 @@ dracutfp="$DIRDRACUT/$DRACUTCONF"
 if [[ -z "$dracutvfio" ]]; then
 	if [[ -f "$dracutfp" ]]; then
 		read -p "File "$dracutfp" already exists, overwrite? [y/N]" varfileexists
-		[[ $varfileexists =~ ^[yY]$ ]] && tee "$dracufp" <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
+		[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
 	else
 		echo "Adding the following line to $dracutfp:"
 		# could run this silently, but I like being explicit
 		#tee "$dracufp" <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" >/dev/null
-		tee "$dracufp" <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
+		tee $dracufp <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
 		read -p "Regenerate initramfs now? [y/n]:" vargen
 		[[ "$vargen" =~ ^[yY]$ ]] && dracut -f
 	fi
