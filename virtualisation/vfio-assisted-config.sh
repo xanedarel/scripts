@@ -27,28 +27,27 @@ dracutfp="$DIRDRACUT/$DRACUTCONF"
 
 if [[ -z "$dracutvfio" ]]; then
 	if [[ -f "$dracutfp" ]]; then
-		read -p "File "$dracutfp" already exists, overwrite? [y/N]" varfileexists
-		[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
+	read -p "File "$dracutfp" already exists, overwrite? [y/N]" varfileexists
+	[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
 	else
-		echo "Adding the following line to $dracutfp:"
-		# could run this silently, but I like being explicit
-		#tee "$dracufp" <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" >/dev/null
-		tee $dracufp <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
-		read -p "Regenerate initramfs now? [y/n]:" vargen
-		[[ "$vargen" =~ ^[yY]$ ]] && dracut -f
+	echo "Adding the following line to $dracutfp:"
+	# could run this silently, but I like being explicit
+	tee $dracufp <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" #>/dev/null
+	read -p "Regenerate initramfs now? [y/n]:" vargen
+	[[ "$vargen" =~ ^[yY]$ ]] && dracut -f
 	fi
 fi
 
 # setting up the iommu script function
 # script from : https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
 function iommuscript {
-	# change the 999 if needed
-	shopt -s nullglob
-	for d in /sys/kernel/iommu_groups/{0..999}/devices/*; do
-		n=${d#*/iommu_groups/*}; n=${n%%/*}
-		printf 'IOMMU Group %s ' "$n"
-		lspci -nns "${d##*/}"
-	done;
+# change the 999 if needed
+shopt -s nullglob
+for d in /sys/kernel/iommu_groups/{0..999}/devices/*; do
+	n=${d#*/iommu_groups/*}; n=${n%%/*}
+	printf 'IOMMU Group %s ' "$n"
+	lspci -nns "${d##*/}"
+done;
 }
 
 # get pci.ids values from the IOMMU group of target gpu pci device
@@ -76,38 +75,38 @@ fi
 # creating array of pci ids
 arids=(); vfioids="[[:alnum:]]\{4\}:[[:alnum:]]\{4\}"
 	
-	for i in "${argroups[@]}"
-		do id=$(iommuscript | grep "IOMMU Group $i" | grep -o "$vfioids")
-		arids+=($id)
-	done
+for i in "${argroups[@]}"
+do id=$(iommuscript | grep "IOMMU Group $i" | grep -o "$vfioids")
+arids+=($id)
+done
 	
-	echo -e "PCI IDs configuration: ${arids[*]}"
-	# modify the array to fit the kernel's command line syntax
-	varwriteids=$(sed "s/ /,/g" <<< ${arids[*]})
-	# check which bootloader may be installed
-	# todo: use install instead of cp (may be ok with cp -p ?)
-	if [[ -f $(which grub 2>/dev/null) ]]; then
-		BOOTFILE=/etc/default/grub
-		cp -p $BOOTFILE /etc/default/backup.grub
-	# also check for gummiboot / systemd-boot (same conf)
-	elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]]; then
-		LOADER=loader.conf
-		[[ -d /efi ]] && CONFFILE=$(find /efi -name $LOADER 2>/dev/null)
-		[[ -d /boot && -z "$CONFFILE" ]] && CONFFILE=$(find /boot -name $LOADER 2>/dev/null)
-		
-		# CONFFILE override (eg: /boot )
-		#CONFFILE=/path
+echo -e "PCI IDs configuration: ${arids[*]}"
+# modify the array to fit the kernel's command line syntax
+varwriteids=$(sed "s/ /,/g" <<< ${arids[*]})
+# check which bootloader may be installed
+# todo: use install instead of cp (may be ok with cp -p ?)
+if [[ -f $(which grub 2>/dev/null) ]]; then
+	BOOTFILE=/etc/default/grub
+	cp -p $BOOTFILE /etc/default/backup.grub
+# also check for gummiboot / systemd-boot (same conf)
+elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]]; then
+	LOADER=loader.conf
+	[[ -d /efi ]] && CONFFILE=$(find /efi -name $LOADER 2>/dev/null)
+	[[ -d /boot && -z "$CONFFILE" ]] && CONFFILE=$(find /boot -name $LOADER 2>/dev/null)
 
-		[[ -z "$CONFFILE" ]] && echo "Could not find the proper boot folder; exiting" && exit
+# CONFFILE override (eg: /boot )
+# CONFFILE=/path
 
-		IDPATH="$(sed 's/\/[A-Za-z0-9]*.conf//g' <<< $CONFFILE)/entries/"
-		IDFILE=$(grep default "$CONFFILE" | awk '{print $2}').conf
-		cp -p "$IDPATH$IDFILE" "$(sed 's/\/$//g' <<< $IDPATH)/backup.$IDFILE"
-		BOOTFILE="$IDPATH$IDFILE"
-		[[ -z $(grep -o "options" "$BOOTFILE") ]] && printf "options" >> "$BOOTFILE"
-		# Check with the user that the right boot file is used
-		read -p "Boot configuration detected = $BOOTFILE [y/N]:" varboot
-		[[ ! "$varboot" =~ ^[yY]$ ]] && exit
+	[[ -z "$CONFFILE" ]] && echo "Could not find the proper boot folder; exiting" && exit
+
+	IDPATH="$(sed 's/\/[A-Za-z0-9]*.conf//g' <<< $CONFFILE)/entries/"
+	IDFILE=$(grep default "$CONFFILE" | awk '{print $2}').conf
+	cp -p "$IDPATH$IDFILE" "$(sed 's/\/$//g' <<< $IDPATH)/backup.$IDFILE"
+	BOOTFILE="$IDPATH$IDFILE"
+	[[ -z $(grep -o "options" "$BOOTFILE") ]] && printf "options" >> "$BOOTFILE"
+	# Check with the user that the right boot file is used
+	read -p "Boot configuration detected = $BOOTFILE [y/N]:" varboot
+	[[ ! "$varboot" =~ ^[yY]$ ]] && exit
 fi
 
 # you can override the $IDFILE variable here
@@ -153,23 +152,23 @@ fi
 #
 
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
-	if [[ -n "${ardel[@]}" ]]; then
-		sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $BOOTFILE
-		del="${ardel[$i]}"
-		ardel=("${ardel[@]/$del}")
-	elif [[ -z "${ardel[@]}" ]]; then
-		BOOTPATTERN="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
-		IDPARAM="vfio-pci.ids="
-		if [[ -n $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
-			sed -i -E "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $BOOTFILE
-			continue
-		elif [[ -z $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
-		end=$(grep -E "$BOOTPATTERN" $BOOTFILE | grep -oE "\"$")
-		[[ -z "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$/ $IDPARAM${varwriteids[*]}/g" $BOOTFILE
-		[[ -n "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" $BOOTFILE
-		break
-		fi
+if [[ -n "${ardel[@]}" ]]; then
+	sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $BOOTFILE
+	del="${ardel[$i]}"
+	ardel=("${ardel[@]/$del}")
+elif [[ -z "${ardel[@]}" ]]; then
+	BOOTPATTERN="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
+	IDPARAM="vfio-pci.ids="
+	if [[ -n $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
+		sed -i -E "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $BOOTFILE
+		continue
+	elif [[ -z $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
+	end=$(grep -E "$BOOTPATTERN" $BOOTFILE | grep -oE "\"$")
+	[[ -z "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$/ $IDPARAM${varwriteids[*]}/g" $BOOTFILE
+	[[ -n "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" $BOOTFILE
+	break
 	fi
+fi
 done
 
 # Checking if there are any more ids to delete
