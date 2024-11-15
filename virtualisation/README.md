@@ -120,7 +120,11 @@ or run
 ```
 # lspci -k | grep -A 2 'NVIDIA'
 ```
-> replace 'NVIDIA' with 'AMD' or your GPU manufacturer.
+(alternatively if you know the domain of the device you can run
+```
+# lspci -s 04:00 -k
+```
+> replace 'NVIDIA' with 'AMD' or your GPU/PCI device manufacturer.
 > 
 Expected output :
 ```
@@ -134,7 +138,4 @@ Expected output :
 --
 ```
 > note that both devices `04:00.0` and `04:00.1` need to be bound to the VFIO driver, as well as any other device in the same IOMMU group as the target GPU when using iommu.sh
-This allows you to fully use the normally passedthrough GPU on the host OS
->note that these instructions can be reversed in order to boot normally without the vfio drivers and only passthrough the GPU when booting a custom grub entry
->
-`[work in progress]`
+
