@@ -16,19 +16,22 @@
 # Checking dracut configuration folders and the status of a vfio.conf file
 DIRDRACUT=/etc/dracut.conf.d
 if [[ ! -d "$DIRDRACUT" ]]; then
-	echo "Script obsolete review dracut.conf.d"
+	echo "Either dracut is not installed or the configuration folder \
+	doesn't exist, if dracut is installed please create /etc/dracut.conf.d/ \
+	with necessary permissions"
 	exit
 fi
 
 DRACUTARGS="vfio_pci vfio vfio_iommu_type1"
 DRACUTCONF="99-vfio.conf"
-dracutvfio="$(grep -ER "(force_drivers)?.*($(sed "s/ /|/g" <<< $DRACUTARGS))" $DIRDRACUT)"
+dracutvfio="$(grep -ER "(force_drivers)?.*\
+			($(sed "s/ /|/g" <<< $DRACUTARGS))" \$DIRDRACUT)"
 dracutfp="$DIRDRACUT/$DRACUTCONF"
 
 if [[ -z "$dracutvfio" ]]; then
 	if [[ -f "$dracutfp" ]]; then
 	read -p "File "$dracutfp" already exists, overwrite? [y/N]" varfileexists
-	[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
+	[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\"vfio_pci vfio vfio_iommu_type1 \""
 	else
 	echo "Adding the following line to $dracutfp:"
 	# could run this silently, but I like being explicit
@@ -58,7 +61,9 @@ if [ -z "$vargpumkr" ]; then
 	iommuscript
 elif [[ -n "$vargpumkr" ]]; then
 	displaygroups=$(iommuscript | grep -i "$vargpumkr")
-	[[ -n "$displaygroups" ]] && echo "$displaygroups" || echo -e "No match found, displaying all IOMMU groups:\n" || iommuscript
+	if [[ -n "$displaygroups" ]]; then echo "$displaygroups"
+	else echo -e "No match found, displaying all IOMMU groups:\n" || iommuscript
+	fi
 fi
 echo "Please enter the main IOMMU group which you would like to passthrough:"
 echo "You can passthrough multiple IOMMU groups with a comma, eg: 18,24,32"
@@ -134,7 +139,8 @@ done
 line=$(grep -En "GRUB_CMDLINE_LINUX_DEFAULT|options" $BOOTFILE | head -n 1)
 
 if [[ -n "${arwrite[@]}" ]]; then
-	printf "Modifying line:$(awk -F ':' '{print $1}' <<< "$line") of "$BOOTFILE" \nAdding ids : ${arwrite[*]}\n"
+	printf "Modifying line:$(awk -F ':' '{print $1}' <<< "$line") \
+	of "$BOOTFILE" \nAdding ids : ${arwrite[*]}\n"
 	[[ -n "${ardel[@]}" ]] && printf "Removing ids : ${ardel[*]} \n"
 elif [[ -z "$arwrite[@]}" && -z "${ardel[@]}" ]]; then
 	echo "No pci.ids to add or remove \n"
@@ -176,7 +182,9 @@ done
 	for ((i=0; i < ${#ardel[@]}; i++)); do
 	[[ -n ${ardel[$i]} ]] && sed -i "s/${ardel[$i]}//g" $BOOTFILE
 	#checking for any number of commas "," trailing the end line
-	[[ -n $(grep $BOOTPATTERN <<< $BOOTFILE | grep -o "\{2,\}") ]] && sed -i -e "/[[:alnum:]]\{4\}:[[:alnum:]]\{4\} s/\{2,\}[ \$]//g" $BOOTFILE
+	if [[ -n $(grep $BOOTPATTERN <<< $BOOTFILE | grep -o "\{2,\}") ]]; then
+	sed -i -e "/[[:alnum:]]\{4\}:[[:alnum:]]\{4\} s/\{2,\}[ \$]//g" $BOOTFILE
+	fi
 	done
 
 # Final user confirmation
