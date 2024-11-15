@@ -20,12 +20,12 @@ if [[ ! -d "$DIRDRACUT" ]]; then
 	exit
 fi
 
-CONFVFIO=$(ls $DIRDRACUT | grep vfio);
+CONFVFIO=$(grep -ER "(force_drivers)?.*vfio" $DIRDRACUT)
 
 if [ -z "$CONFVFIO" ]; then
-	last=$(ls -m $DIRDRACUT | sed 's/^.*, //g' | sed -e 's/[^0-9].*//g'); last=$((last + 10))
-	echo "Adding the following line to $DIRDRACUT/$last-vfio.conf"
-	tee $DIRDRACUT/$last-vfio.conf <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
+	[[ -f $DIRDRACUT/99-vfio ]] && echo "File $DIRDRACUT/99-vfio.conf already exists" && exit
+	echo "Adding the following line to $DIRDRACUT/99-vfio.conf"
+	tee $DIRDRACUT/99-vfio.conf <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
 	read -p "Regenerate initramfs now? [y/n]:" vargen
 	if [[ "y" == "$vargen" ]]; then dracut -f ; fi
 fi
@@ -56,7 +56,7 @@ echo "Please enter the main IOMMU group which you would like to passthrough:"
 echo "You can passthrough multiple IOMMU groups with a comma, eg: 18,24,32"
 read -p "IOMMU GROUP "  vargroup
 
-#check for spaces / commas
+# Check for spaces / commas
 argroups=()
 
 if [ -n $(grep -E "[ ,]" <<< "$vargroup") ]; then
@@ -80,7 +80,7 @@ arids=(); vfioids="[[:alnum:]]\{4\}:[[:alnum:]]\{4\}"
 	if [[ -f $(which grub 2>/dev/null) ]]; then
 		BOOTFILE=/etc/default/grub
 		cp -p $BOOTFILE /etc/default/backup.grub
-	#also check for gummiboot / systemd-boot (same conf)
+	# also check for gummiboot / systemd-boot (same conf)
 	elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]]; then
 		LOADER=loader.conf
 		[[ -d /efi ]] && CONFFILE=$(find /efi -name $LOADER 2>/dev/null)
@@ -121,7 +121,7 @@ for ((i=0; i < "${#arids[@]}"; i++)); do
 	fi
 done
 
-## Writing changes to files
+# Writing changes to files
 # The $line variable is only set for cosmetic reasons
 line=$(grep -En "GRUB_CMDLINE_LINUX_DEFAULT|options" $BOOTFILE | head -n 1)
 
@@ -167,8 +167,8 @@ done
 # todo: finish this monster
 	for ((i=0; i < ${#ardel[@]}; i++)); do
 	[[ -n ${ardel[$i]} ]] && sed -i "s/${ardel[$i]}//g" $BOOTFILE
-	# checking for any number of commas "," trailing the end line
-	[[ -n $(grep $BOOTPATTERN <<< $BOOTFILE | grep -o ",\{2,\}") ]] && sed -i -e "/[[:alnum:]]\{4\}:[[:alnum:]]\{4\} s/,\{2,\}[ \$]//g" $BOOTFILE
+	#checking for any number of commas "," trailing the end line
+	[[ -n $(grep $BOOTPATTERN <<< $BOOTFILE | grep -o "\{2,\}") ]] && sed -i -e "/[[:alnum:]]\{4\}:[[:alnum:]]\{4\} s/\{2,\}[ \$]//g" $BOOTFILE
 	done
 
 # Final user confirmation
