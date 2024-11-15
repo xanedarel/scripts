@@ -20,18 +20,27 @@ if [[ ! -d "$DIRDRACUT" ]]; then
 	exit
 fi
 
-CONFVFIO=$(grep -ER "(force_drivers)?.*vfio" $DIRDRACUT)
+DRACUTARGS="vfio_pci vfio vfio_iommu_type1"
+DRACUTCONF="99-vfio.conf"
+dracutvfio="$(grep -ER "(force_drivers)?.*($(sed "s/ /|/g" <<< $DRACUTARGS))" $DIRDRACUT)"
+dracutfp="$DIRDRACUT/$DRACUTCONF"
 
-if [ -z "$CONFVFIO" ]; then
-	[[ -f $DIRDRACUT/99-vfio ]] && echo "File $DIRDRACUT/99-vfio.conf already exists" && exit
-	echo "Adding the following line to $DIRDRACUT/99-vfio.conf"
-	tee $DIRDRACUT/99-vfio.conf <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
-	read -p "Regenerate initramfs now? [y/n]:" vargen
-	if [[ "y" == "$vargen" ]]; then dracut -f ; fi
+if [[ -z "$dracutvfio" ]]; then
+	if [[ -f "$dracutfp" ]]; then
+		read -p "File "$dracutfp" already exists, overwrite? [y/N]" varfileexists
+		[[ $varfileexists =~ ^[yY]$ ]] && tee "$dracufp" <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
+	else
+		echo "Adding the following line to $dracutfp:"
+		# could run this silently, but I like being explicit
+		#tee "$dracufp" <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" >/dev/null
+		tee "$dracufp" <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \""
+		read -p "Regenerate initramfs now? [y/n]:" vargen
+		[[ "$vargen" =~ ^[yY]$ ]] && dracut -f
+	fi
 fi
 
 # setting up the iommu script function
-# https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
+# script from : https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
 function iommuscript {
 	# change the 999 if needed
 	shopt -s nullglob
@@ -164,7 +173,7 @@ for ((i=0; i < "${#arwrite[@]}"; i++)); do
 done
 
 # Checking if there are any more ids to delete
-# todo: finish this monster
+# TODO finish this monster
 	for ((i=0; i < ${#ardel[@]}; i++)); do
 	[[ -n ${ardel[$i]} ]] && sed -i "s/${ardel[$i]}//g" $BOOTFILE
 	#checking for any number of commas "," trailing the end line
