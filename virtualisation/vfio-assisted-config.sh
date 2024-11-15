@@ -19,26 +19,25 @@ if [[ ! -d "$DIRDRACUT" ]]; then
 echo "Either dracut is not installed or the configuration folder \
 doesn't exist, if dracut is installed please create /etc/dracut.conf.d/ \
 with necessary permissions"
-	exit
+exit
 fi
 
 DRACUTARGS="vfio_pci vfio vfio_iommu_type1"
 DRACUTCONF="99-vfio.conf"
 dracutvfio="$(grep -ER "(force_drivers)?.*\
-($(sed "s/ /|/g" <<< $DRACUTARGS))" \$DIRDRACUT)"
+($(sed "s/ /|/g" <<< "$DRACUTARGS"))" "$DIRDRACUT")"
 dracutfp="$DIRDRACUT/$DRACUTCONF"
 
-if [[ -z "$dracutvfio" ]]; then
-	if [[ -f "$dracutfp" ]]; then
-	read -p "File "$dracutfp" already exists, overwrite? [y/N]" varfileexists
-	[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\"vfio_pci vfio vfio_iommu_type1 \""
-	else
+if [[ -z "$dracutvfio" && ! -f "$dracutfp" ]]; then
 	echo "Adding the following line to $dracutfp:"
 	# could run this silently, but I like being explicit
 	tee $dracufp <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" #>/dev/null
-	read -p "Regenerate initramfs now? [y/n]:" vargen
+	read -p "Regenerate initramfs now? [y/N]:" vargen
 	[[ "$vargen" =~ ^[yY]$ ]] && dracut -f
-	fi
+elif [[ -f "$dracutfp" ]]; then
+	read -p "File "$dracutfp" already exists, overwrite? [y/N]" varfileexists
+	[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\"vfio_pci vfio vfio_iommu_type1 \""
+
 fi
 
 # setting up the iommu script function
@@ -69,18 +68,15 @@ echo "Please enter the main IOMMU group which you would like to passthrough:"
 echo "You can passthrough multiple IOMMU groups with a comma, eg: 18,24,32"
 read -p "IOMMU GROUP "  vargroup
 
-# Check for spaces / commas
-argroups=()
-
-if [ -n $(grep -E "[ ,]" <<< "$vargroup") ]; then
-	newgroups=$(sed 's/,/ /g' <<< $vargroup)
-	for i in $newgroups; do argroups+=($i); done
-fi
+# Edit spaces / commas
+vargroup=$(sed 's/,/ /g' <<< "$vargroup")
+for i in $vargroup; do newgroups+=($i); done
 
 # creating array of pci ids
-arids=(); vfioids="[[:alnum:]]\{4\}:[[:alnum:]]\{4\}"
-	
-for i in "${argroups[@]}"
+vfioids="[[:alnum:]]\{4\}:[[:alnum:]]\{4\}"
+arids=()
+
+for i in "${newgroups[@]}"
 do id=$(iommuscript | grep "IOMMU Group $i" | grep -o "$vfioids")
 arids+=($id)
 done
