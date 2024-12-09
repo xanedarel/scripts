@@ -14,6 +14,9 @@
 
 
 # Checking dracut configuration folders and the status of a vfio.conf file
+# I've been made aware that some configurations might instead use the 
+# /etc/dracut.conf file that needs to be taken into account when checking for
+# VFIO options
 DIRDRACUT=/etc/dracut.conf.d
 if [[ ! -d "$DIRDRACUT" ]]; then
 echo "Either dracut is not installed or the configuration folder \
@@ -58,7 +61,7 @@ read vargpumkr
 if [ -z "$vargpumkr" ]; then
 	echo "No manufacturer entered, displaying all IOMMU groups:" && sleep 2
 	iommuscript
-elif [[ -n "$vargpumkr" ]]; then
+else
 	displaygroups=$(iommuscript | grep -i "$vargpumkr")
 	if [[ -n "$displaygroups" ]]; then echo "$displaygroups"
 	else echo -e "No match found, displaying all IOMMU groups:\n" || iommuscript
