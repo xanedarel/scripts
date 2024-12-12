@@ -14,14 +14,17 @@
 
 
 # Checking dracut configuration folders and the status of a vfio.conf file
-# I've been made aware that some configurations might instead use the 
-# /etc/dracut.conf file that needs to be taken into account when checking for
-# VFIO options
 DIRDRACUT=/etc/dracut.conf.d
 if [[ ! -d "$DIRDRACUT" ]]; then
-echo "Either dracut is not installed or the configuration folder \
-doesn't exist, if dracut is installed please create /etc/dracut.conf.d/ \
-with necessary permissions"
+
+# if you prefer using /etc/dracut.conf ; comment the two lines above and
+# uncomment the next two
+#DIRDRACUT=/etc/dracut.conf
+#if [[ ! -f "$DIRDRACUT" ]]; then
+
+echo "Either the configuration folder $DIRDRACUT doesn't exist, or the script \
+wasn't run with the appropriate permissions. If your configuration doesn't \
+use $DIRDRACUT you can modify the script accordingly"
 exit
 fi
 
