@@ -14,19 +14,19 @@
 
 
 # Checking dracut configuration folders and the status of a vfio.conf file
+# I've resulted in checking wether lines not starting with the '#' are present
+# in /etc/dracut.conf
+FILEDRACUT=/etc/dracut.conf
 DIRDRACUT=/etc/dracut.conf.d
-if [[ ! -d "$DIRDRACUT" ]]; then
-
-# if you prefer using /etc/dracut.conf ; comment the two lines above and
-# uncomment the next two
-#DIRDRACUT=/etc/dracut.conf
-#if [[ ! -f "$DIRDRACUT" ]]; then
-
-echo "Either the configuration folder $DIRDRACUT doesn't exist, or the script \
-wasn't run with the appropriate permissions. If your configuration doesn't \
-use $DIRDRACUT you can modify the script accordingly"
+if [[ -z $(grep -Eo "^[^#]" $FILEDRACUT) && ! -d "$DIRDRACUT" ]]; then
+echo -e "Either the configuration folder $DIRDRACUT doesn't exist and the file\
+ $FILEDRACUT hasn't been initiated, \nor the script wasn't run with the \
+appropriate permissions."
 exit
 fi
+# Going to determine which location to use in case both /etc/dracut.conf & /etc/dracut.conf.d are used [WIP]
+#if [[ -n $(grep -Eo "^[^#]" $FILEDRACUT) ]]; then
+
 
 DRACUTARGS="vfio_pci vfio vfio_iommu_type1"
 DRACUTCONF="99-vfio.conf"
