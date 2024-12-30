@@ -160,7 +160,7 @@ fi
 #
 
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
-echo "starting loop"
+[[ "$(grep ${arwrite[$i]} $BOOTFILE)" ]] && echo "${arwrite[@]} already on file" && break
 if [[ -n "$(grep "$vfioids" <<< "${ardel[@]}")" ]]; then
 	sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $BOOTFILE
 	del="${ardel[$i]}"
