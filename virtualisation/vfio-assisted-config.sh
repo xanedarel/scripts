@@ -118,13 +118,14 @@ fi
 
 # you can override the $IDFILE variable here
 #IDFILE=/path/to/file
-
 for i in $(grep -o "$vfioids" $BOOTFILE); do
 	avfio+=($i)
 done
-
+ardel=()
+arwrite=()
 # Comparing those ids with iommuscript's output
 for ((i=0; i < "${#avfio[@]}"; i++)); do
+	[[ -n "$(grep "${avfio[$i]}" <<< "${ardel[*]}")" ]] && break
 	if [[ ! " ${arids[@]} " =~ "${avfio[$i]}" ]];
 	then ardel+=(${avfio[$i]})
 	fi
@@ -160,7 +161,7 @@ fi
 #
 
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
-[[ "$(grep ${arwrite[$i]} $BOOTFILE)" ]] && echo "${arwrite[@]} already on file" && break
+[[ "$(grep "${arwrite[$i]}" $BOOTFILE)" ]] && echo "${arwrite[@]} already on file" && break
 if [[ -n "$(grep "$vfioids" <<< "${ardel[@]}")" ]]; then
 	sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $BOOTFILE
 	del="${ardel[$i]}"
@@ -185,8 +186,8 @@ done
 	for ((i=0; i < ${#ardel[@]}; i++)); do
 	[[ -n ${ardel[$i]} ]] && sed -i "s/${ardel[$i]}//g" $BOOTFILE
 	#checking for any number of commas "," trailing the end line
-	if [[ -n "$(grep -E "$BOOTPATTERN" "$BOOTFILE" | grep -Eo ",{2,}")" ]]; then
-	sed -i -e "/[[:alnum:]]\{4\}:[[:alnum:]]\{4\}/ s/,\{2,\}//g" $BOOTFILE
+	if [[ -n "$(grep -E "$BOOTPATTERN" "$BOOTFILE" | grep -Eo ",{1,}$")" ]]; then
+	sed -i "/$vfioids/ s/,\{1,\} / /g;s/,\{1,\}$//g" $BOOTFILE
 	fi
 	done
 
