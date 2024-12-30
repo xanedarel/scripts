@@ -160,17 +160,23 @@ fi
 #
 
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
-if [[ -n "${ardel[@]}" ]]; then
+echo "starting loop"
+if [[ -n "$(grep "$vfioids" <<< "${ardel[@]}")" ]]; then
 	sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $BOOTFILE
 	del="${ardel[$i]}"
 	ardel=("${ardel[@]/$del}")
-elif [[ -z "${ardel[@]}" ]]; then
+	echo "rewritten"
+	echo "ardel = ${ardel[@]}"
+	[[ -z "${ardel[@]}" ]] && echo "ardel null"
+else
 	BOOTPATTERN="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
 	IDPARAM="vfio-pci.ids="
+	echo "owo"
 	if [[ -n $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
 		sed -i -E "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $BOOTFILE
 		continue
 	elif [[ -z $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
+	echo "uwu"
 	end=$(grep -E "$BOOTPATTERN" $BOOTFILE | grep -oE "\"$")
 	[[ -z "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$/ $IDPARAM${varwriteids[*]}/g" $BOOTFILE
 	[[ -n "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" $BOOTFILE
@@ -184,8 +190,10 @@ done
 	for ((i=0; i < ${#ardel[@]}; i++)); do
 	[[ -n ${ardel[$i]} ]] && sed -i "s/${ardel[$i]}//g" $BOOTFILE
 	#checking for any number of commas "," trailing the end line
-	if [[ -n $(grep $BOOTPATTERN <<< $BOOTFILE | grep -o "\{2,\}") ]]; then
-	sed -i -e "/[[:alnum:]]\{4\}:[[:alnum:]]\{4\} s/\{2,\}[ \$]//g" $BOOTFILE
+	echo "hehe"
+	if [[ -n "$(grep -E "$BOOTPATTERN" "$BOOTFILE" | grep -Eo ",{2,}")" ]]; then
+	echo "doubled"
+	sed -i -e "/[[:alnum:]]\{4\}:[[:alnum:]]\{4\}/ s/,\{2,\}//g" $BOOTFILE
 	fi
 	done
 
