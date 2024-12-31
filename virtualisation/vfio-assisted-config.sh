@@ -13,39 +13,37 @@
 # local configuration and needs
 
 
-# Checking dracut configuration folders and the status of a vfio.conf file
-# I've resulted in checking wether lines not starting with the '#' are present
-# in /etc/dracut.conf
+# Checking dracut configuration folders and the status of a vfio.conf file,
+# wether lines not starting with the '#' are present in /etc/dracut.conf
+
 FILEDRACUT=/etc/dracut.conf
 DIRDRACUT=/etc/dracut.conf.d
-if [[ -z $(grep -Eo "^[^#]" $FILEDRACUT) && ! -d "$DIRDRACUT" ]]; then
-echo -e "Either the configuration folder $DIRDRACUT doesn't exist and the file\
- $FILEDRACUT hasn't been initiated, \nor the script wasn't run with the \
-appropriate permissions."
-exit
-fi
-# Going to determine which location to use in case both /etc/dracut.conf & /etc/dracut.conf.d are used [WIP]
-#if [[ -n $(grep -Eo "^[^#]" $FILEDRACUT) ]]; then
-
+if [[ -z $(which systemd 2>/dev/null) ]]; then
+	if [[ -z $(grep -Eo "^[^#]" $FILEDRACUT) && ! -d "$DIRDRACUT" ]]; then
+	echo -e "Either the configuration folder $DIRDRACUT doesn't exist and the file\
+	 $FILEDRACUT hasn't been initiated, \nor the script wasn't run with the \
+	appropriate permissions."
+	exit
+	fi
 
 DRACUTARGS="vfio_pci vfio vfio_iommu_type1"
 DRACUTCONF="99-vfio.conf"
-dracutvfio="$(grep -ER "(force_drivers)?.*\
-($(sed "s/ /|/g" <<< "$DRACUTARGS"))" "$DIRDRACUT")"
+dracutvfio="$(grep -ER "(force_drivers)?.*($(sed "s/ /|/g" <<< "$DRACUTARGS"))" "$DIRDRACUT")"
 dracutfp="$DIRDRACUT/$DRACUTCONF"
 
-if [[ -z "$dracutvfio" && ! -f "$dracutfp" ]]; then
+# Going to determine which location to use in case both /etc/dracut.conf & /etc/dracut.conf.d are used [WIP]
+#if [[ -n $(grep -Eo "^[^#]" $FILEDRACUT) ]]; then
+	if [[ -z "$dracutvfio" && ! -f "$dracutfp" ]]; then
 	echo "Adding the following line to $dracutfp:"
 	# could run this silently, but I like being explicit
 	tee $dracufp <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" #>/dev/null
 	read -p "Regenerate initramfs now? [y/N]:" vargen
 	[[ "$vargen" =~ ^[yY]$ ]] && dracut -f
-elif [[ -f "$dracutfp" ]]; then
+	elif [[ -f "$dracutfp" ]]; then
 	read -p "File "$dracutfp" already exists, overwrite? [y/N]" varfileexists
 	[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\"vfio_pci vfio vfio_iommu_type1 \""
-
+	fi
 fi
-
 # setting up the iommu script function
 # script from : https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
 function iommuscript {
@@ -160,6 +158,9 @@ fi
 #echo "arwrite ${arwrite[@]}"
 #
 
+BOOTPATTERN="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
+IDPARAM="vfio-pci.ids="
+
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
 [[ "$(grep "${arwrite[$i]}" $BOOTFILE)" ]] && echo "${arwrite[@]} already on file" && break
 if [[ -n "$(grep "$vfioids" <<< "${ardel[@]}")" ]]; then
@@ -167,13 +168,11 @@ if [[ -n "$(grep "$vfioids" <<< "${ardel[@]}")" ]]; then
 	del="${ardel[$i]}"
 	ardel=("${ardel[@]/$del}")
 else
-	BOOTPATTERN="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
-	IDPARAM="vfio-pci.ids="
 	if [[ -n $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
 		sed -i -E "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $BOOTFILE
 		continue
 	elif [[ -z $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
-	end=$(grep -E "$BOOTPATTERN" $BOOTFILE | grep -oE "\"$")
+	end=$(grep "$BOOTPATTERN" $BOOTFILE | grep -oE "\"$")
 	[[ -z "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$/ $IDPARAM${varwriteids[*]}/g" $BOOTFILE
 	[[ -n "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" $BOOTFILE
 	break
@@ -186,9 +185,13 @@ done
 	for ((i=0; i < ${#ardel[@]}; i++)); do
 	[[ -n ${ardel[$i]} ]] && sed -i "s/${ardel[$i]}//g" $BOOTFILE
 	#checking for any number of commas "," trailing the end line
-	if [[ -n "$(grep -E "$BOOTPATTERN" "$BOOTFILE" | grep -Eo ",{1,}$")" ]]; then
-	sed -i "/$vfioids/ s/,\{1,\} / /g;s/,\{1,\}$//g" $BOOTFILE
+	if [[ -n "$(grep -E "$BOOTPATTERN" $BOOTFILE | grep -Eo ",{1,}$")" ]]; then
+	#removing trailing commas but keeping
+	sed -i -E "/$vfioids/ s/,{1,} / /g;s/(,{1,}$)//g" $BOOTFILE
+	#removing begining comma
 	fi
+#	if [[ -n "$(grep 
+#sed -i "/$IDPARAM/ s/$IDPARAM,\{1,\}/$IDPARAM/g" $BOOTFILE
 	done
 
 # Final user confirmation
