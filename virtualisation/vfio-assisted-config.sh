@@ -162,7 +162,7 @@ BOOTPATTERN="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
 IDPARAM="vfio-pci.ids="
 
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
-[[ "$(grep "${arwrite[$i]}" $BOOTFILE)" ]] && echo "${arwrite[@]} already on file" && break
+[[ "$(grep "${arwrite[$i]}" $BOOTFILE)" ]] && echo "${arwrite[$i]} already on file" && break
 if [[ -n "$(grep "$vfioids" <<< "${ardel[@]}")" ]]; then
 	sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $BOOTFILE
 	del="${ardel[$i]}"
