@@ -10,8 +10,7 @@ for i in ./*.tif; do
 	    root=$(sha1sum "$i" | awk -F ' ' '{print $1}')
 	if [ -n "$(ls ./PIA*.tif 2>/dev/null)" ]; then
 		for a in ./PIA*.tif; do
-		compare=$(sha1sum "$a" | awk -F ' ' '{print $1}')
-	    	[[ "$root" == "$compare" ]] && rm ./"$a"
+	    	[[ "$root" == "$(sha1sum "$a" | awk -F ' ' '{print $1}')" ]] && rm ./"$a"
 		done
 	fi
 # check for trailing [::space::] in filename	
