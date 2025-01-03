@@ -133,15 +133,14 @@ or run
 (replace <x.x> with version number ie : 6.6)
 
 ## Reboot your device to ensure that the GPU is bound to the VFIO drivers
+> replace 'NVIDIA' with 'AMD' or your GPU/PCI device manufacturer.
 ```
 # lspci -k | grep -A 2 'NVIDIA'
 ```
-(alternatively if you know the domain of the device you can run
+(alternatively if you know the domain of the device you can run)
 ```
 # lspci -s 04:00 -k
 ```
-> replace 'NVIDIA' with 'AMD' or your GPU/PCI device manufacturer.
-> 
 Expected output :
 ```
 04:00.0 VGA compatible controller: NVIDIA Corporation GP107 [GeForce GTX 1050 Ti] (rev a1)
