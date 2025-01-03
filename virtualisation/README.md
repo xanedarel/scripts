@@ -34,14 +34,18 @@ app-emulation/qemu -oss fuse nfs usbredir spice usb
 
 # libvirt
 app-emulation/libvirt fuse lvm nbd
->=net-dns/dnsmasq-2.90 script
->=net-libs/gnutls-3.8.7.1-r1 pkcs11 tools
 
 # optional : if you wish to use a GUI manager
 # virtmanager
 app-emulation/virt-manager gui
->=net-misc/spice-gtk-0.42-r4 usbredir gtk3
 ```
+You may need to setup other use flags depending on your system configuration and needs
+I advise you to read the use flags description for each package if you hav'nt already:
+
+https://packages.gentoo.org/packages/app-emulation/qemu
+https://packages.gentoo.org/packages/app-emulation/libvirt
+https://packages.gentoo.org/packages/app-emulation/virt-manager
+
 #### Finally install the packages :
 app-emulation/virt-manager is optional and for GUI
 ```
@@ -59,9 +63,11 @@ You also need to add your user account to groups :
 ```
 > Replace <$user> with your user account, ex: usermod -aG input elise
 
-set up vfio gpu drivers is the next step before creating the vm:
 
 ## Setting up vfio pci ids with vfio-assisted-config.sh
+
+set up vfio gpu drivers is the next step before creating the VM:
+
 Use the script (needs root priviledges to edit system configuration files and generate the initramfs)
 
 Done :)
@@ -77,6 +83,16 @@ run the follow command on the host system to display devices with IOMMU groups a
 		lspci -nns "${d##*/}"
 	done;
 ```
+<details>
+<summary>If this script fails</summary>
+	
+then it is likely that you havn't configured the IOMMU correctly in your BIOS/UEFI.
+
+You could check this by running `ls /sys/kernel/iommu_groups/` or `dmesg | grep iommu`.
+
+You can look for IOMMU settings, near the CPU settings, or in "advanced" settings. 
+</details>
+
 (you should be able to copy and paste directly in your shell, or put it in a .sh file if you prefer to run it manually)
 
 ```
