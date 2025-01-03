@@ -26,8 +26,14 @@ if [[ -z $(which systemd 2>/dev/null) ]]; then
 	exit
 	fi
 
-DRACUTARGS="vfio_pci vfio vfio_iommu_type1"
+# This will be the name of the new dracut configuration file for vfio drivers, feel free to change it
 DRACUTCONF="99-vfio.conf"
+# As well as added arguments
+DRACUTARGS="vfio_pci vfio vfio_iommu_type1"
+# some config might need different args (WIP)
+#DRACUTARGS="intel args"
+
+
 dracutvfio="$(grep -ER "(force_drivers)?.*($(sed "s/ /|/g" <<< "$DRACUTARGS"))" "$DIRDRACUT")"
 dracutfp="$DIRDRACUT/$DRACUTCONF"
 
@@ -44,6 +50,8 @@ dracutfp="$DIRDRACUT/$DRACUTCONF"
 	[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\"vfio_pci vfio vfio_iommu_type1 \""
 	fi
 fi
+
+
 # setting up the iommu script function
 # script from : https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
 function iommuscript {
@@ -92,7 +100,7 @@ varwriteids=$(sed "s/ /,/g" <<< ${arids[*]})
 # todo: use install instead of cp (may be ok with cp -p ?)
 if [[ -f $(which grub 2>/dev/null) ]]; then
 	BOOTFILE=/etc/default/grub
-	cp -p $BOOTFILE /etc/default/backup.grub
+	cp -p $BOOTFILE /etc/default/grub.backup
 # also check for gummiboot / systemd-boot (same conf)
 elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]]; then
 	LOADER=loader.conf
@@ -106,7 +114,7 @@ elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]];
 
 	IDPATH="$(sed 's/\/[A-Za-z0-9]*.conf//g' <<< $CONFFILE)/entries/"
 	IDFILE=$(grep default "$CONFFILE" | awk '{print $2}').conf
-	cp -p "$IDPATH$IDFILE" "$(sed 's/\/$//g' <<< $IDPATH)/backup.$IDFILE"
+	cp -p "$IDPATH$IDFILE" "$(sed 's/\/$//g' <<< $IDPATH)/$IDFILE.backup"
 	BOOTFILE="$IDPATH$IDFILE"
 	[[ -z $(grep -o "options" "$BOOTFILE") ]] && printf "options" >> "$BOOTFILE"
 	# Check with the user that the right boot file is used
@@ -152,7 +160,6 @@ fi
 # if none are present we will write at the end of the string "vfio-pci.ids="
 
 # nuclear options : sed -i -E "/^options/ s/([0-9A-Za-z]{4}:[0-9A-Za-z]{4}[, ])*//g" /efi/loader/entries/6.6.58-gentoo-dist.conf
-
 # debug
 #echo "ardel ${ardel[@]}"
 #echo "arwrite ${arwrite[@]}"
@@ -188,12 +195,15 @@ done
 	if [[ -n "$(grep -E "$BOOTPATTERN" $BOOTFILE | grep -Eo ",{1,}$")" ]]; then
 	#removing trailing commas but keeping
 	sed -i -E "/$vfioids/ s/,{1,} / /g;s/(,{1,}$)//g" $BOOTFILE
-	#removing begining comma
 	fi
-#	if [[ -n "$(grep 
-#sed -i "/$IDPARAM/ s/$IDPARAM,\{1,\}/$IDPARAM/g" $BOOTFILE
 	done
 
 # Final user confirmation
-#echo "The boot configuration has been modyfied:"
-#echo "$(diff $BOOTFILE $IDDIR/
+echo "The boot configuration has been modyfied:"
+	diff $BOOTFILE $BOOTFILE.backup
+	read -p "Would you like to keep the changes? [y/N] \n" varusercheck
+	if [[ ! "$varusercheck" =~ ^[yY]$ ]]; then
+	rm $BOOTFILE
+	cp -p $BOOTFILE.backup $BOOTFILE
+	fi
+
