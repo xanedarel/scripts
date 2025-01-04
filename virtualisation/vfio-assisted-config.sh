@@ -3,7 +3,7 @@
 # This script aims to automate the configuration needed to use the vfio drivers
 # on specific pci devices / iommu group. The sources for third party code have
 # been explicited. Some actions require elevated privileges, like setting up
-# $DIRDRACUT/20-vfio.conf, regenerating the initramfs, configuring the
+# $DIRDRACUT/99-vfio.conf, regenerating the initramfs, configuring the
 # vfio-pci.ids on GRUB, and updating the grub. The script is heavily influenced
 # by the use of NVIDIA GPUs, please help make it more manufacturer agnostic.
 
@@ -33,12 +33,18 @@ DRACUTARGS="vfio_pci vfio vfio_iommu_type1"
 # some config might need different args (WIP)
 #DRACUTARGS="intel args"
 
-dracutfp="$DIRDRACUT/$DRACUTCONF"
-
 # Going to determine which location to use in case both /etc/dracut.conf 
 # & /etc/dracut.conf.d are used [WIP]
-#if [[ -n $(grep -Eo "^[^#]" $FILEDRACUT) ]]; then
-	if [[ -z "$(grep -ER "(force_drivers)?.*$DRACUTARGS" "$DIRDRACUT")" ]]; then
+#if [[ -n $(grep -o "^[^#].*" $FILEDRACUT) && -d $DIRDRACUT ]]; then
+#echo "Both the file /etc/dracut.conf and /etc/dracut.conf.d/ directory seem to be used"
+#read -p "Please enter the path of the file or folder you wish to use" varwhichconf
+#[[ -f "$varwhichconf" ]] && dracutfp="$varwhichconf"
+#[[ -d "$varwhichconf" ]] && DIRDRACUT="$varwhichconf"
+#fi
+
+dracutfp="$DIRDRACUT/$DRACUTCONF"
+
+if [[ -z "$(grep -ER "(force_drivers)?.*$DRACUTARGS" "$DIRDRACUT")" ]]; then
 	if [[ ! -f "$dracutfp" ]]; then
 	echo "Adding the following line to $dracutfp:"
 	# could run this silently, but I like being explicit
@@ -82,6 +88,7 @@ read -p "IOMMU GROUP "  vargroup
 
 # Edit spaces / commas
 vargroup=$(sed 's/,/ /g' <<< "$vargroup")
+# [WIP] more chekcs to verify that the syntax of user input is correct
 for i in $vargroup; do newgroups+=($i); done
 
 # creating array of pci ids
@@ -124,22 +131,22 @@ fi
 
 # you can override the $IDFILE variable here
 #IDFILE=/path/to/file
-avfio=()
+aprevfio=()
 for i in $(grep -o "$vfioids" $BOOTFILE); do
-	avfio+=($i)
+	aprevfio+=($i)
 done
 ardel=()
 arwrite=()
 # Comparing those ids with iommuscript's output
-for ((i=0; i < "${#avfio[@]}"; i++)); do
-	[[ -n "$(grep "${avfio[$i]}" <<< "${ardel[*]}")" ]] && break
-	if [[ ! " ${arids[@]} " =~ "${avfio[$i]}" ]];
-	then ardel+=(${avfio[$i]})
+for ((i=0; i < "${#aprevfio[@]}"; i++)); do
+	[[ -n "$(grep "${aprevfio[$i]}" <<< "${ardel[*]}")" ]] && break
+	if [[ ! " ${arids[@]} " =~ "${aprevfio[$i]}" ]];
+	then ardel+=(${aprevfio[$i]})
 	fi
 done
 
 for ((i=0; i < "${#arids[@]}"; i++)); do
-	if [[ ! " ${avfio[@]} " =~ "${arids[$i]}" ]]
+	if [[ ! " ${aprevfio[@]} " =~ "${arids[$i]}" ]]
 	then arwrite+=(${arids[$i]})
 	fi
 done
@@ -171,7 +178,7 @@ BOOTPATTERN="^.*GRUB_CMDLINE_LINUX_DEFAULT|^.*options"
 IDPARAM="vfio-pci.ids="
 
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
-[[ "$(grep "${arwrite[$i]}" $BOOTFILE)" ]] && echo "${arwrite[$i]} already in $BOOTFILE" && break
+[[ -n "$(grep "${arwrite[$i]}" $BOOTFILE)" ]] && echo "${arwrite[$i]} already in $BOOTFILE" && break
 if [[ -n "$(grep "$vfioids" <<< "${ardel[@]}")" ]]; then
 	sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $BOOTFILE
 	del="${ardel[$i]}"
