@@ -25,6 +25,7 @@ if [[ -z $(which systemd 2>/dev/null) ]]; then
 	appropriate permissions."
 	exit
 	fi
+fi
 
 # This will be the name of the new dracut configuration file for vfio drivers, feel free to change it
 DRACUTCONF="99-vfio.conf"
@@ -61,13 +62,13 @@ fi
 # setting up the iommu script function
 # script from : https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Enabling_IOMMU
 function iommuscript {
-# change the 999 if needed
-shopt -s nullglob
-for d in /sys/kernel/iommu_groups/{0..999}/devices/*; do
-	n=${d#*/iommu_groups/*}; n=${n%%/*}
-	printf 'IOMMU Group %s ' "$n"
-	lspci -nns "${d##*/}"
-done;
+	# change the 999 if needed
+	shopt -s nullglob
+	for d in /sys/kernel/iommu_groups/{0..999}/devices/*; do
+		n=${d#*/iommu_groups/*}; n=${n%%/*}
+		printf 'IOMMU Group %s ' "$n"
+		lspci -nns "${d##*/}"
+	done;
 }
 
 # get pci.ids values from the IOMMU group of target gpu pci device
