@@ -120,12 +120,23 @@ elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]];
 	[[ -z "$CONFFILE" ]] && echo "Could not find the proper boot folder; exiting" && exit
 
 	IDPATH="$(sed 's/\/[[:alnum:]]*.conf//g' <<< $CONFFILE)/entries/"
-	IDFILE=$(grep default "$CONFFILE" | awk '{print $2}')
+	IDFILE=$(grep hehe "$CONFFILE" | awk '{print $2}')
 	if [[ -n "$IDFILE" ]]; then 
 		IDFILE=$IDFILE.conf
 	else
 		[[ -z "$(ls $IDPATH/*.conf 2>/dev/null)" ]] && echo "No boot configuration found, please review systemd-boot / gummiboot configuration"
-		[[ ! 1 == "$(ls -1 $IDPATH*.conf | wc -l)" ]] && IDFILE="$(ls $IDPATH*.conf)"
+		if [[ 1 == "$(ls -1 $IDPATH*.conf | wc -l)" ]]; then 
+			IDFILE="$(ls $IDPATH*.conf)"
+		else 
+			echo "Displaying all configuration files in $IDPATH"
+			arpath=()
+			for i in $IDPATH*.conf; do arpath+=($i); done
+			for ((i=0; i<${#arpath[@]}; i++)); do
+				echo "[$i] - ${arpath[$i]}"
+			done
+			read -p "Which boot file do you wish to use? " whichconf
+			[[ -n "${arpath[$whichconf]}" ]] && IDFILE="${arpath[$whichconf]}"
+		fi
 	fi
 	cp -p "$IDPATH$IDFILE" "$(sed 's/\/$//g' <<< $IDPATH)/$IDFILE.backup"
 	BOOTFILE="$IDPATH$IDFILE"
