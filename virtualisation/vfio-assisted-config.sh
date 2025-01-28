@@ -120,7 +120,7 @@ elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]];
 	[[ -z "$CONFFILE" ]] && echo "Could not find the proper boot folder; exiting" && exit
 
 	IDPATH="$(sed 's/\/[[:alnum:]]*.conf//g' <<< $CONFFILE)/entries/"
-	IDFILE=$(grep hehe "$CONFFILE" | awk '{print $2}')
+	IDFILE=$(grep default "$CONFFILE" | awk '{print $2}')
 	if [[ -n "$IDFILE" ]]; then 
 		IDFILE=$IDFILE.conf
 	else
