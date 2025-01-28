@@ -119,8 +119,14 @@ elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]];
 
 	[[ -z "$CONFFILE" ]] && echo "Could not find the proper boot folder; exiting" && exit
 
-	IDPATH="$(sed 's/\/[[:alnum:]]*.conf//g' <<< $CONFFILE)/entries/"
-	IDFILE=$(grep default "$CONFFILE" | awk '{print $2}').conf
+	IDPATH="$(sed 's/\/*.conf//g' <<< $CONFFILE)/entries/"
+	IDFILE=$(grep default "$CONFFILE" | awk '{print $2}')
+	if [[ -n "$IDFILE" ]]; then 
+		IDFILE=$IDFILE.conf
+	else
+		[[ -z "$(ls $IDPATH/*.conf 2>/dev/null)" ]] && echo "No boot configuration found, please review systemd-boot / gummiboot configuration"
+		[[ ! 1 == "$(ls -1 $IDPATH*.conf | wc -l)" ]] && IDFILE="$(ls $IDPATH*.conf)"
+	fi
 	cp -p "$IDPATH$IDFILE" "$(sed 's/\/$//g' <<< $IDPATH)/$IDFILE.backup"
 	BOOTFILE="$IDPATH$IDFILE"
 	#BOOTFILE="/efi/loader/entries/6.6.58-gentoo-dist.conf"
