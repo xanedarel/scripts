@@ -13,8 +13,7 @@
 # local configuration and needs
 
 
-# Checking dracut configuration folders and the status of a vfio.conf file,
-# wether lines not starting with the '#' are present in /etc/dracut.conf
+# Checking dracut configuration file & folders
 
 FILEDRACUT=/etc/dracut.conf
 DIRDRACUT=/etc/dracut.conf.d
@@ -27,7 +26,7 @@ if [[ -z $(which systemd 2>/dev/null) ]]; then
 	fi
 fi
 
-# This will be the name of the new dracut configuration file for vfio drivers, feel free to change it
+# This will be the name of the new dracut configuration file for vfio drivers
 DRACUTCONF="99-vfio.conf"
 # As well as added arguments
 DRACUTARGS="vfio_pci vfio vfio_iommu_type1"
@@ -54,7 +53,7 @@ if [[ -z "$(grep -ER "(force_drivers)?.*$DRACUTARGS" "$DIRDRACUT")" ]]; then
 	[[ "$vargen" =~ ^[yY]$ ]] && dracut -f
 	else
 	read -p "File "$dracutfp" already exists, overwrite? [y/N]" varfileexists
-	[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\"vfio_pci vfio vfio_iommu_type1 \""
+	[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\"vfio_pci vfio vfio_iommu_type1 \"" #>/dev/null
 	fi
 fi
 
@@ -90,6 +89,7 @@ read -p "IOMMU GROUP "  vargroup
 # Edit spaces / commas
 vargroup=$(sed 's/,/ /g' <<< "$vargroup")
 # [WIP] more chekcs to verify that the syntax of user input is correct
+newgroups=()
 for i in $vargroup; do newgroups+=($i); done
 
 # creating array of pci ids
@@ -114,8 +114,8 @@ elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]];
 	[[ -d /efi ]] && CONFFILE=$(find /efi -name $LOADER 2>/dev/null)
 	[[ -d /boot && -z "$CONFFILE" ]] && CONFFILE=$(find /boot -name $LOADER 2>/dev/null)
 
-# CONFFILE override (eg: /boot )
-# CONFFILE=/path/to/file.conf
+# CONFFILE override :
+#CONFFILE=/path/to/file.conf
 
 	[[ -z "$CONFFILE" ]] && echo "Could not find the proper boot folder; exiting" && exit
 
@@ -136,12 +136,13 @@ elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]];
 			done
 			read -p "Which boot file do you wish to use? " whichconf
 			[[ -n "${arpath[$whichconf]}" ]] && IDFILE="${arpath[$whichconf]}"
+   
 		fi
 	fi
 	cp -p "$IDPATH$IDFILE" "$(sed 's/\/$//g' <<< $IDPATH)/$IDFILE.backup"
 	BOOTFILE="$IDPATH$IDFILE"
 	#BOOTFILE="/efi/loader/entries/6.6.58-gentoo-dist.conf"
-	[[ -z $(grep -o "options" "$BOOTFILE") ]] && printf "options" >> "$BOOTFILE"
+	[[ -z $(grep -o "options" "$BOOTFILE") ]] && tee "options" >> "$BOOTFILE" #/dev/null
 	# Check with the user that the right boot file is used
 	read -p "Boot configuration detected = $BOOTFILE [y/N]:" varboot
 	[[ ! "$varboot" =~ ^[yY]$ ]] && exit
