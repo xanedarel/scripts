@@ -96,13 +96,13 @@ echo -e "PCI IDs configuration: ${arids[*]}"
 # modify the array to fit the 'vfio-pci.ids=' syntax
 varwriteids=$(sed "s/ /,/g" <<< ${arids[*]})
 # check which bootloader may be installed
-if [[ -n $(command -v grub) ]]; then
+if [[ -n $(command -v grub-update) || -n $(which grub 2>/dev/null) ]]; then
 	BOOTFILE=/etc/default/grub
-	cp -p $BOOTFILE $BOOTFILE.backup
+	cp -p "$BOOTFILE" "$BOOTFILE.backup"
 # also check for gummiboot / systemd-boot (same conf)
-elif [[ -f $(which gummiboot 2>/dev/null) || -n $(command -v bootctl) ]]; then
+elif [[ -n $(which gummiboot 2>/dev/null) || -n $(command -v bootctl) ]]; then
 	LOADER=loader.conf
-	[[ -d /efi ]] && CONFFILE=$(find /efi -name $LOADER 2>/dev/null)
+	[[ -d /efi ]] && CONFFILE=$(find /efi -name "$LOADER" 2>/dev/null)
 	[[ -d /boot && -z "$CONFFILE" ]] && CONFFILE=$(find /boot -name $LOADER 2>/dev/null)
 
 # CONFFILE override :
@@ -142,7 +142,7 @@ fi
 # you can override the $IDFILE variable here
 #IDFILE=/path/to/file
 aprevfio=()
-for i in $(grep -o "$vfioids" $BOOTFILE); do
+for i in $(grep -o "$vfioids" "$BOOTFILE"); do
 	aprevfio+=($i)
 done
 ardel=()
@@ -163,7 +163,7 @@ done
 
 # Writing changes to files
 # The $line variable is only set for cosmetic reasons
-line=$(grep -En "GRUB_CMDLINE_LINUX_DEFAULT|options" $BOOTFILE | head -n 1)
+line=$(grep -En "GRUB_CMDLINE_LINUX_DEFAULT|options" "$BOOTFILE" | head -n 1)
 
 if [[ -n "${arwrite[@]}" ]]; then
 	printf "Modifying line:$(awk -F ':' '{print $1}' <<< "$line") \
@@ -190,20 +190,20 @@ IDPARAM="vfio-pci.ids="
 for ((i=0; i < "${#arwrite[@]}"; i++)); do
 [[ -n "$(grep "${arwrite[$i]}" $BOOTFILE)" ]] && echo "${arwrite[$i]} already in $BOOTFILE" && break
 if [[ -n "$(grep "$vfioids" <<< "${ardel[@]}")" ]]; then
-	sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" $BOOTFILE
+	sed -i "s/${ardel[$i]}/${arwrite[$i]}/g" "$BOOTFILE"
 	del="${ardel[$i]}"
 	ardel=("${ardel[@]/$del}")
 else
 	if [[ -n $(grep -o "$IDPARAM" $BOOTFILE) ]]; then
-		sed -i -E "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" $BOOTFILE
+		sed -i -E "/$BOOTPATTERN/ s/$IDPARAM/$IDPARAM${arwrite[$i]},/g" "$BOOTFILE"
 		continue
 	else
 	# GRUB has a trailing ending quote character on its configuration line
 	# checking for it ensures that this script is compatible on GRUB and GRUBless
 	# systems
-	end=$(grep "$BOOTPATTERN" $BOOTFILE | grep -oE "\"$")
-	[[ -z "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$/ $IDPARAM${varwriteids[*]}/g" $BOOTFILE
-	[[ -n "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" $BOOTFILE
+	end=$(grep "$BOOTPATTERN" "$BOOTFILE" | grep -oE "\"$")
+	[[ -z "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$/ $IDPARAM${varwriteids[*]}/g" "$BOOTFILE"
+	[[ -n "$end" ]] && sed -i -E "/$BOOTPATTERN/ s/$end/ $IDPARAM${varwriteids[*]}$end/g" "$BOOTFILE"
 	break
 	fi
 fi
@@ -212,17 +212,17 @@ done
 # Checking if there are any more ids to delete
 # TODO finish this monster
 	for ((i=0; i < ${#ardel[@]}; i++)); do
-	[[ -n ${ardel[$i]} ]] && sed -i "s/${ardel[$i]}//g" $BOOTFILE
+	[[ -n ${ardel[$i]} ]] && sed -i "s/${ardel[$i]}//g" "$BOOTFILE"
 	#checking for any number of commas "," trailing the end line
 	if [[ -n "$(grep -E "$BOOTPATTERN" $BOOTFILE | grep -Eo ",{1,}$")" ]]; then
 	#removing trailing commas but keeping
-	sed -i -E "/$vfioids/ s/,{1,} / /g;s/(,{1,}$)//g" $BOOTFILE
+	sed -i -E "/$vfioids/ s/,{1,} / /g;s/(,{1,}$)//g" "$BOOTFILE"
 	fi
 	done
 
 # Final user confirmation [WIP]
 echo "The boot configuration has been modyfied:"
-	diff $BOOTFILE $BOOTFILE.backup
+	diff "$BOOTFILE" "$BOOTFILE.backup"
 	read -p "Would you like to keep the changes? [y/N] \n" varusercheck
 	if [[ ! "$varusercheck" =~ ^[yY]$ ]]; then
 	rm $BOOTFILE
