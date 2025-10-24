@@ -14,7 +14,7 @@ for i in ./*.tif; do
 		done
 	fi
 # check for trailing [::space::] in filename	
-if [ -n "$(ls ./ | grep -E ".*[ ].tif")" <<< "$i" ]; then
-mv "$i" "$(sed -e 's/ .tif/.tif/g' <<< "$i" )"
+newname=$(echo "$i" | sed 's/[[:space:]]\+\.tif$/.tif/')
+if [ "$i" != "$newname" ]; then
+  mv "$i" "$newname"
 fi
-done
