@@ -17,7 +17,7 @@
 
 FILEDRACUT=/etc/dracut.conf
 DIRDRACUT=/etc/dracut.conf.d
-if [[ -z $(which systemd 2>/dev/null) ]]; then
+if [[ -z $(command -v dracut) ]]; then
 	if [[ -z $(grep -o "^[^#]" $FILEDRACUT) && ! -d "$DIRDRACUT" ]]; then
 	echo -e "Either the configuration folder $DIRDRACUT doesn't exist and the file\
 	 $FILEDRACUT hasn't been initiated, \nor the script wasn't run with the \
@@ -32,15 +32,6 @@ DRACUTCONF="99-vfio.conf"
 DRACUTARGS="vfio_pci vfio vfio_iommu_type1"
 # some config might need different args (WIP)
 #DRACUTARGS="intel args"
-
-# Going to determine which location to use in case both /etc/dracut.conf 
-# & /etc/dracut.conf.d are used [WIP]
-#if [[ -n $(grep -o "^[^#].*" $FILEDRACUT) && -d $DIRDRACUT ]]; then
-#echo "Both the file /etc/dracut.conf and /etc/dracut.conf.d/ directory seem to be used"
-#read -p "Please enter the path of the file or folder you wish to use" varwhichconf
-#[[ -f "$varwhichconf" ]] && dracutfp="$varwhichconf"
-#[[ -d "$varwhichconf" ]] && DIRDRACUT="$varwhichconf"
-#fi
 
 dracutfp="$DIRDRACUT/$DRACUTCONF"
 
@@ -105,11 +96,11 @@ echo -e "PCI IDs configuration: ${arids[*]}"
 # modify the array to fit the 'vfio-pci.ids=' syntax
 varwriteids=$(sed "s/ /,/g" <<< ${arids[*]})
 # check which bootloader may be installed
-if [[ -f $(which grub 2>/dev/null) ]]; then
+if [[ -n $(command -v grub) ]]; then
 	BOOTFILE=/etc/default/grub
 	cp -p $BOOTFILE $BOOTFILE.backup
 # also check for gummiboot / systemd-boot (same conf)
-elif [[ -f $(which gummiboot 2>/dev/null) || -f $(which bootctl 2>/dev/null) ]]; then
+elif [[ -f $(which gummiboot 2>/dev/null) || -n $(command -v bootctl) ]]; then
 	LOADER=loader.conf
 	[[ -d /efi ]] && CONFFILE=$(find /efi -name $LOADER 2>/dev/null)
 	[[ -d /boot && -z "$CONFFILE" ]] && CONFFILE=$(find /boot -name $LOADER 2>/dev/null)
