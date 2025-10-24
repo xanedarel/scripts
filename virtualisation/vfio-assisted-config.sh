@@ -48,12 +48,12 @@ if [[ -z "$(grep -ER "(force_drivers)?.*$DRACUTARGS" "$DIRDRACUT")" ]]; then
 	if [[ ! -f "$dracutfp" ]]; then
 	echo "Adding the following line to $dracutfp:"
 	# could run this silently, but I like being explicit
-	tee $dracufp <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" #>/dev/null
+	tee $dracutfp <<< "force_drivers+=\" vfio_pci vfio vfio_iommu_type1 \"" #>/dev/null
 	read -p "Regenerate initramfs now? [y/N]:" vargen
 	[[ "$vargen" =~ ^[yY]$ ]] && dracut -f
 	else
 	read -p "File "$dracutfp" already exists, overwrite? [y/N]" varfileexists
-	[[ $varfileexists =~ ^[yY]$ ]] && tee $dracufp <<< "force_drivers+=\"vfio_pci vfio vfio_iommu_type1 \"" #>/dev/null
+	[[ $varfileexists =~ ^[yY]$ ]] && tee $dracutfp <<< "force_drivers+=\"vfio_pci vfio vfio_iommu_type1 \"" #>/dev/null
 	fi
 fi
 
